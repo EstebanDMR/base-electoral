@@ -402,7 +402,7 @@ const VotantesDB = () => {
             )}
             
             {/* Formulario nuevo votante */}
-            {!isDiaVotacion && (
+            {!puedeEditar && (
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <UserPlus className="w-6 h-6 text-indigo-600" />
