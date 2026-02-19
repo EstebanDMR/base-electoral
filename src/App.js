@@ -716,11 +716,7 @@ const VotantesDB = () => {
                 </div>
                 <button
                   onClick={agregarLider}
-                  className={`mt-4 px-6 py-3 rounded-lg font-semibold w-full ${
-                    isDiaVotacion 
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
+                  className="mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold w-full"
                 >
                   ✓ Registrar Líder
                 </button>
