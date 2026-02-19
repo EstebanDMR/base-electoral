@@ -23,7 +23,6 @@ const VotantesDB = () => {
   // Estado inicial
   const [isAdmin, setIsAdmin] = useState(false);
   const [password, setPassword] = useState('');
-  const [isDiaVotacion, setIsDiaVotacion] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
   // Datos
@@ -97,18 +96,10 @@ const VotantesDB = () => {
       }
     });
 
-    // Escuchar cambios en modo día de votación
-    const configRef = ref(database, 'config/diaVotacion');
-    const unsubscribeConfig = onValue(configRef, (snapshot) => {
-      const data = snapshot.val();
-      setIsDiaVotacion(data || false);
-    });
-
     // Cleanup
     return () => {
       unsubscribeVotantes();
       unsubscribeLideres();
-      unsubscribeConfig();
     };
   }, []);
 
@@ -120,13 +111,6 @@ const VotantesDB = () => {
     } else {
       window.alert('Contraseña incorrecta');
     }
-  };
-
-  // Toggle modo día de votación
-  const toggleDiaVotacion = async () => {
-    const nuevoEstado = !isDiaVotacion;
-    const configRef = ref(database, 'config/diaVotacion');
-    await set(configRef, nuevoEstado);
   };
 
   // Agregar votante
@@ -307,7 +291,7 @@ const VotantesDB = () => {
   };
 
   // Verificar permisos de edición
-  const puedeEditar = isAdmin && !isDiaVotacion;
+  const puedeEditar = isAdmin;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -322,20 +306,6 @@ const VotantesDB = () => {
                 🌐 En vivo
               </span>
             </div>
-            
-            {isAdmin && (
-              <button
-                onClick={toggleDiaVotacion}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors ${
-                  isDiaVotacion 
-                    ? 'bg-red-500 text-white hover:bg-red-600' 
-                    : 'bg-green-500 text-white hover:bg-green-600'
-                }`}
-              >
-                {isDiaVotacion ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
-                {isDiaVotacion ? 'Modo Votación ACTIVO' : 'Modo Normal'}
-              </button>
-            )}
           </div>
 
           {/* Login / Status */}
@@ -370,14 +340,14 @@ const VotantesDB = () => {
               >
                 Entrar como Admin
               </button>
-              <span className="text-sm text-gray-600 ml-3">
-                👁️ Modo: Solo Lectura
+              <span className="text-sm text-gray-600 ml-3 w-full sm:w-auto">
+                👤 Rol: Usuario
               </span>
             </div>
           ) : (
             <div className="flex items-center justify-between">
               <span className="text-green-600 font-semibold flex items-center gap-2">
-                ✓ Sesión Admin Activa
+                ✓ Rol: Administrador
               </span>
               <button
                 onClick={() => setIsAdmin(false)}
@@ -728,7 +698,6 @@ const VotantesDB = () => {
                     value={nuevoLider.nombre}
                     onChange={(e) => setNuevoLider({...nuevoLider, nombre: e.target.value})}
                     className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-                    disabled={isDiaVotacion}
                   />
                   <input
                     type="text"
@@ -736,7 +705,6 @@ const VotantesDB = () => {
                     value={nuevoLider.telefono}
                     onChange={(e) => setNuevoLider({...nuevoLider, telefono: e.target.value})}
                     className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-                    disabled={isDiaVotacion}
                   />
                   <input
                     type="text"
@@ -744,12 +712,10 @@ const VotantesDB = () => {
                     value={nuevoLider.zona}
                     onChange={(e) => setNuevoLider({...nuevoLider, zona: e.target.value})}
                     className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-                    disabled={isDiaVotacion}
                   />
                 </div>
                 <button
                   onClick={agregarLider}
-                  disabled={isDiaVotacion}
                   className={`mt-4 px-6 py-3 rounded-lg font-semibold w-full ${
                     isDiaVotacion 
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
