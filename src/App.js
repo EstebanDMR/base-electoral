@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Lock, Unlock, UserPlus, Search, BarChart3, Eye, EyeOff } from 'lucide-react';
+import { Users, UserPlus, Search, BarChart3, Eye, EyeOff } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, push, remove, update } from 'firebase/database';
 
