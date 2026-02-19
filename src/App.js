@@ -58,6 +58,10 @@ const VotantesDB = () => {
   const [editandoVotante, setEditandoVotante] = useState(null);
   const [datosEdicion, setDatosEdicion] = useState(null);
   
+ // Edición de líder
+  const [editandoLider, setEditandoLider] = useState(null);
+  const [datosEdicionLider, setDatosEdicionLider] = useState(null);
+
   // Mensajes de error
   const [mensajeError, setMensajeError] = useState(null);
 
@@ -227,10 +231,16 @@ const VotantesDB = () => {
     setMensajeError(null);
   };
   
-  // Marcar/desmarcar que ya votó
+   // Marcar/desmarcar que ya votó
   const toggleYaVoto = async (id) => {
     const votante = votantes.find(v => v.id === id);
     if (votante) {
+      // Si ya votó y quiere desmarcar, solo admin puede hacerlo
+      if (votante.yaVoto && !isAdmin) {
+        window.alert('Solo el administrador puede desmarcar un voto');
+        return;
+      }
+      
       const votanteRef = ref(database, `votantes/${id}`);
       await update(votanteRef, { yaVoto: !votante.yaVoto });
     }
@@ -242,6 +252,33 @@ const VotantesDB = () => {
       const liderRef = ref(database, `lideres/${id}`);
       await remove(liderRef);
     }
+  };
+  
+  // Iniciar edición de líder
+  const iniciarEdicionLider = (lider) => {
+    setEditandoLider(lider.id);
+    setDatosEdicionLider({...lider});
+  };
+  
+  // Guardar edición de líder
+  const guardarEdicionLider = async () => {
+    if (!datosEdicionLider.nombre) {
+      window.alert('El nombre del líder es obligatorio');
+      return;
+    }
+    
+    const liderRef = ref(database, `lideres/${editandoLider}`);
+    const { id, ...datosParaGuardar } = datosEdicionLider;
+    await update(liderRef, datosParaGuardar);
+    
+    setEditandoLider(null);
+    setDatosEdicionLider(null);
+  };
+  
+  // Cancelar edición de líder
+  const cancelarEdicionLider = () => {
+    setEditandoLider(null);
+    setDatosEdicionLider(null);
   };
 
   // Filtrar votantes
@@ -257,10 +294,16 @@ const VotantesDB = () => {
     totalVotantes: votantes.length,
     totalLideres: lideres.length,
     yaVotaron: votantes.filter(v => v.yaVoto).length,
-    votantesPorLider: lideres.map(lider => ({
-      nombre: lider.nombre,
-      cantidad: votantes.filter(v => v.liderAsignado === lider.id).length
-    }))
+    votantesPorLider: lideres.map(lider => {
+      const votantesDelLider = votantes.filter(v => v.liderAsignado === lider.id);
+      const yaVotaronDelLider = votantesDelLider.filter(v => v.yaVoto).length;
+      return {
+        nombre: lider.nombre,
+        cantidad: votantesDelLider.length,
+        yaVotaron: yaVotaronDelLider,
+        faltan: votantesDelLider.length - yaVotaronDelLider
+      };
+    })
   };
 
   // Verificar permisos de edición
@@ -717,7 +760,7 @@ const VotantesDB = () => {
                 </button>
               </div>
             )}
-
+          
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">
               <table className="w-full">
                 <thead className="bg-indigo-600 text-white">
@@ -732,23 +775,85 @@ const VotantesDB = () => {
                 <tbody>
                   {lideres.map((lider, idx) => (
                     <tr key={lider.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                      <td className="px-4 py-3 font-semibold">{lider.nombre}</td>
-                      <td className="px-4 py-3">{lider.telefono}</td>
-                      <td className="px-4 py-3">{lider.zona}</td>
-                      <td className="px-4 py-3">
-                        <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-semibold">
-                          {votantes.filter(v => v.liderAsignado === lider.id).length}
-                        </span>
-                      </td>
-                      {puedeEditar && (
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => eliminarLider(lider.id)}
-                            className="text-red-600 hover:text-red-800 font-semibold"
-                          >
-                            Eliminar
-                          </button>
-                        </td>
+                      {editandoLider === lider.id ? (
+                        // Modo edición
+                        <>
+                          <td className="px-4 py-3">
+                            <input
+                              type="text"
+                              value={datosEdicionLider.nombre}
+                              onChange={(e) => setDatosEdicionLider({...datosEdicionLider, nombre: e.target.value})}
+                              className="w-full px-2 py-1 border-2 border-indigo-300 rounded focus:border-indigo-500 focus:outline-none"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="text"
+                              value={datosEdicionLider.telefono}
+                              onChange={(e) => setDatosEdicionLider({...datosEdicionLider, telefono: e.target.value})}
+                              className="w-full px-2 py-1 border-2 border-indigo-300 rounded focus:border-indigo-500 focus:outline-none"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="text"
+                              value={datosEdicionLider.zona}
+                              onChange={(e) => setDatosEdicionLider({...datosEdicionLider, zona: e.target.value})}
+                              className="w-full px-2 py-1 border-2 border-indigo-300 rounded focus:border-indigo-500 focus:outline-none"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-semibold">
+                              {votantes.filter(v => v.liderAsignado === lider.id).length}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={guardarEdicionLider}
+                                className="text-green-600 hover:text-green-800 font-semibold"
+                              >
+                                Guardar
+                              </button>
+                              <button
+                                onClick={cancelarEdicionLider}
+                                className="text-gray-600 hover:text-gray-800 font-semibold"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        // Modo visualización
+                        <>
+                          <td className="px-4 py-3 font-semibold">{lider.nombre}</td>
+                          <td className="px-4 py-3">{lider.telefono}</td>
+                          <td className="px-4 py-3">{lider.zona}</td>
+                          <td className="px-4 py-3">
+                            <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-semibold">
+                              {votantes.filter(v => v.liderAsignado === lider.id).length}
+                            </span>
+                          </td>
+                          {puedeEditar && (
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => iniciarEdicionLider(lider)}
+                                  className="text-indigo-600 hover:text-indigo-800 font-semibold"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => eliminarLider(lider.id)}
+                                  className="text-red-600 hover:text-red-800 font-semibold"
+                                >
+                                  Eliminar
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </>
                       )}
                     </tr>
                   ))}
@@ -815,17 +920,32 @@ const VotantesDB = () => {
 
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-4">Votantes por Líder</h2>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {stats.votantesPorLider
                   .sort((a, b) => b.cantidad - a.cantidad)
                   .map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-4">
-                      <div className="w-48 font-semibold text-gray-700">{item.nombre}</div>
-                      <div className="flex-1 bg-gray-200 rounded-full h-8 relative">
+                    <div key={idx} className="border-b pb-4 last:border-b-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-semibold text-gray-700 text-lg">{item.nombre}</div>
+                        <div className="text-sm text-gray-600">
+                          Total: {item.cantidad} votantes
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mb-2">
+                        <div className="bg-green-50 p-3 rounded-lg">
+                          <div className="text-green-600 text-sm font-medium">Ya votaron</div>
+                          <div className="text-green-800 text-2xl font-bold">{item.yaVotaron}</div>
+                        </div>
+                        <div className="bg-orange-50 p-3 rounded-lg">
+                          <div className="text-orange-600 text-sm font-medium">Faltan</div>
+                          <div className="text-orange-800 text-2xl font-bold">{item.faltan}</div>
+                        </div>
+                      </div>
+                      <div className="flex-1 bg-gray-200 rounded-full h-6 relative">
                         <div
-                          className="bg-indigo-600 h-8 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
+                          className="bg-indigo-600 h-6 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
                           style={{
-                            width: `${stats.totalVotantes > 0 ? (item.cantidad / stats.totalVotantes) * 100 : 0}%`
+                            width: `${item.cantidad > 0 ? (item.cantidad / stats.totalVotantes) * 100 : 0}%`
                           }}
                         >
                           <span className="text-white font-semibold text-sm">{item.cantidad}</span>
@@ -843,12 +963,12 @@ const VotantesDB = () => {
 
         {/* Footer con instrucciones */}
         <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
-          <h3 className="font-bold text-gray-800 mb-2">🔐 Información de Acceso</h3>
+          <h3 className="font-bold text-gray-800 mb-2">ℹ️ Información del Sistema</h3>
           <p className="text-sm text-gray-600 mb-2">
-            <strong>Contraseña Admin:</strong> <code className="bg-gray-100 px-2 py-1 rounded">admin2025</code>
+            👤 <strong>Usuario Normal:</strong> Puede ver votantes y marcar quién ya votó.
           </p>
           <p className="text-sm text-gray-600 mb-2">
-            💡 <strong>Modo Votación:</strong> Actívalo el día de las elecciones para bloquear toda edición. Solo podrás consultar datos.
+            👨‍💼 <strong>Administrador:</strong> Puede agregar, editar y eliminar votantes y líderes. También puede desmarcar votos.
           </p>
           <p className="text-sm text-gray-600">
             🌐 <strong>Sincronización:</strong> Todos los cambios se sincronizan automáticamente con todos los usuarios conectados.
