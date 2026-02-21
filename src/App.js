@@ -445,8 +445,6 @@ const VotantesDB = () => {
           </div>
         </div>
 
-        </div>
-
         {console.log('Vista actual:', vistaActual)}
 
         {/* Vista Votantes */}
