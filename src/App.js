@@ -403,16 +403,6 @@ const VotantesDB = () => {
         <div className="bg-white rounded-lg shadow-lg mb-6">
           <div className="flex border-b">
             <button
-              onClick={() => setVistaActual('votantes')}
-              className={`flex-1 px-6 py-4 font-semibold transition-colors ${
-                vistaActual === 'votantes'
-                  ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-700'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              👥 Votantes ({votantes.length})
-            </button>
-            <button
               onClick={() => setVistaActual('busqueda')}
               className={`flex-1 px-6 py-4 font-semibold transition-colors ${
                 vistaActual === 'busqueda'
@@ -421,6 +411,16 @@ const VotantesDB = () => {
               }`}
             >
               🔍 Búsqueda
+            </button>
+            <button
+              onClick={() => setVistaActual('votantes')}
+              className={`flex-1 px-6 py-4 font-semibold transition-colors ${
+                vistaActual === 'votantes'
+                  ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-700'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              👥 Votantes ({votantes.length})
             </button>
             <button
               onClick={() => setVistaActual('lideres')}
@@ -450,6 +450,20 @@ const VotantesDB = () => {
         {/* Vista Votantes */}
         {vistaActual === 'votantes' && (
           <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-800">
+                  Lista de Votantes
+                </h2>
+
+                <button
+                  onClick={exportarAExcel}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
+                >
+                  📊 Exportar a Excel
+                </button>
+              </div>
+            </div>
             {/* Mensaje de error */}
             {mensajeError && (
               <div className="bg-red-100 border-2 border-red-500 text-red-800 px-6 py-4 rounded-lg flex items-center justify-between">
@@ -664,16 +678,13 @@ const VotantesDB = () => {
                               {lideres.find(l => l.id === votante.liderAsignado)?.nombre || '-'}
                             </td>
                             <td className="px-4 py-3 text-center">
-                              <button
-                                onClick={() => toggleYaVoto(votante.id)}
-                                className={`px-3 py-1 rounded-full text-sm font-semibold transition-colors ${
-                                  votante.yaVoto 
-                                    ? 'bg-green-500 text-white hover:bg-green-600' 
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                              >
-                                {votante.yaVoto ? '✓ Votó' : 'Marcar'}
-                              </button>
+                              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                votante.yaVoto 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {votante.yaVoto ? '✓ Votó' : 'Pendiente'}
+                              </span>
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex gap-2">
@@ -718,12 +729,6 @@ const VotantesDB = () => {
             <div className="bg-white rounded-lg shadow-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-800">Buscar Votantes</h2>
-                <button
-                  onClick={exportarAExcel}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
-                >
-                  📊 Exportar a Excel
-                </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative">
@@ -776,13 +781,16 @@ const VotantesDB = () => {
                           {lideres.find(l => l.id === votante.liderAsignado)?.nombre || '-'}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                            votante.yaVoto 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {votante.yaVoto ? '✓ Votó' : 'Pendiente'}
-                          </span>
+                          <button
+                            onClick={() => toggleYaVoto(votante.id)}
+                            className={`px-3 py-1 rounded-full text-sm font-semibold transition-colors ${
+                              votante.yaVoto 
+                                ? 'bg-green-500 text-white hover:bg-green-600' 
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                          >
+                            {votante.yaVoto ? '✓ Votó' : 'Marcar'}
+                          </button>
                         </td>
                       </tr>
                     ))}
