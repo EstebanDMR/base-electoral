@@ -52,6 +52,46 @@ const VotantesDB = () => {
   const [filtroLider, setFiltroLider] = useState('');
   const [busqueda, setBusqueda] = useState('');
   const [vistaActual, setVistaActual] = useState('votantes');
+
+  // Exportar a Excel
+  const exportarAExcel = () => {
+    // Crear encabezados
+    const encabezados = ['Nombre', 'Documento', 'Teléfono', 'Dirección', 'Barrio', 'Municipio', 'Mesa', 'Puesto', 'Líder', '¿Ya votó?'];
+    
+    // Crear filas con los datos
+    const filas = votantes.map(votante => {
+      const lider = lideres.find(l => l.id === votante.liderAsignado);
+      return [
+        votante.nombreCompleto,
+        votante.documento,
+        votante.telefono,
+        votante.direccion,
+        votante.barrio,
+        votante.municipio,
+        votante.mesa,
+        votante.puesto,
+        lider ? lider.nombre : '-',
+        votante.yaVoto ? 'Sí' : 'No'
+      ];
+    });
+    
+    // Crear CSV
+    const csvContent = [
+      encabezados.join(','),
+      ...filas.map(fila => fila.map(campo => `"${campo || ''}"`).join(','))
+    ].join('\n');
+    
+    // Crear y descargar archivo
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `votantes_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   
   // Edición de votante
   const [editandoVotante, setEditandoVotante] = useState(null);
@@ -380,6 +420,16 @@ const VotantesDB = () => {
                   : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
+              🔍 Búsqueda
+            </button>
+            <button
+              onClick={() => setVistaActual('lideres')}
+              className={`flex-1 px-6 py-4 font-semibold transition-colors ${
+                vistaActual === 'lideres'
+                  ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-700'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}  
+            >
               🎯 Líderes ({lideres.length})
             </button>
             <button
@@ -500,32 +550,6 @@ const VotantesDB = () => {
               </div>
             )}
 
-            {/* Búsqueda y filtros */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Buscar por nombre o documento..."
-                    value={busqueda}
-                    onChange={(e) => setBusqueda(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-                <select
-                  value={filtroLider}
-                  onChange={(e) => setFiltroLider(e.target.value)}
-                  className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-                >
-                  <option value="">Todos los líderes</option>
-                  {lideres.map(lider => (
-                    <option key={lider.id} value={lider.id}>{lider.nombre}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
             {/* Lista de votantes */}
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">
               <div className="overflow-x-auto">
@@ -543,7 +567,7 @@ const VotantesDB = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {votantesFiltrados.map((votante, idx) => (
+                    {votantes.map((votante, idx) => (
                       <tr key={votante.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
                         {editandoVotante === votante.id ? (
                           // Modo edición
@@ -675,7 +699,7 @@ const VotantesDB = () => {
                     ))}
                   </tbody>
                 </table>
-                {votantesFiltrados.length === 0 && (
+                {votantes.length === 0 && (
                   <div className="text-center py-12 text-gray-500">
                     No hay votantes registrados
                   </div>
@@ -684,6 +708,95 @@ const VotantesDB = () => {
             </div>
           </div>
         )}
+
+        {/* Vista Búsqueda */}
+        {vistaActual === 'busqueda' && (
+          <div className="space-y-6">
+            {/* Búsqueda y filtros */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-800">Buscar Votantes</h2>
+                <button
+                  onClick={exportarAExcel}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
+                >
+                  📊 Exportar a Excel
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre o documento..."
+                    value={busqueda}
+                    onChange={(e) => setBusqueda(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+                <select
+                  value={filtroLider}
+                  onChange={(e) => setFiltroLider(e.target.value)}
+                  className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
+                >
+                  <option value="">Todos los líderes</option>
+                  {lideres.map(lider => (
+                    <option key={lider.id} value={lider.id}>{lider.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Resultados de búsqueda */}
+            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-indigo-600 text-white">
+                    <tr>
+                      <th className="px-4 py-3 text-left">Nombre</th>
+                      <th className="px-4 py-3 text-left">Documento</th>
+                      <th className="px-4 py-3 text-left">Teléfono</th>
+                      <th className="px-4 py-3 text-left">Barrio</th>
+                      <th className="px-4 py-3 text-left">Mesa</th>
+                      <th className="px-4 py-3 text-left">Líder</th>
+                      <th className="px-4 py-3 text-center">¿Ya votó?</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {votantesFiltrados.map((votante, idx) => (
+                      <tr key={votante.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                        <td className="px-4 py-3">{votante.nombreCompleto}</td>
+                        <td className="px-4 py-3 font-mono">{votante.documento}</td>
+                        <td className="px-4 py-3">{votante.telefono}</td>
+                        <td className="px-4 py-3">{votante.barrio}</td>
+                        <td className="px-4 py-3">{votante.mesa}</td>
+                        <td className="px-4 py-3">
+                          {lideres.find(l => l.id === votante.liderAsignado)?.nombre || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                            votante.yaVoto 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {votante.yaVoto ? '✓ Votó' : 'Pendiente'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {votantesFiltrados.length === 0 && (
+                  <div className="text-center py-12 text-gray-500">
+                    {busqueda || filtroLider ? 'No se encontraron resultados' : 'No hay votantes registrados'}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Vista Líderes */}
 
         {/* Vista Líderes */}
         {vistaActual === 'lideres' && (
