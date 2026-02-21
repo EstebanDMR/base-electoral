@@ -59,7 +59,7 @@ const VotantesDB = () => {
     const encabezados = ['Nombre', 'Documento', 'Teléfono', 'Dirección', 'Barrio', 'Municipio', 'Mesa', 'Puesto', 'Líder', '¿Ya votó?'];
     
     // Crear filas con los datos
-    const filas = votantes.map(votante => {
+    const filas = votantesFiltrados.map(votante => {
       const lider = lideres.find(l => l.id === votante.liderAsignado);
       return [
         votante.nombreCompleto,
@@ -583,7 +583,7 @@ const VotantesDB = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {votantes.map((votante, idx) => (
+                    {votantesFiltrados.map((votante, idx) => (
                       <tr key={votante.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
                         {editandoVotante === votante.id ? (
                           // Modo edición
@@ -770,12 +770,55 @@ const VotantesDB = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {votantesFiltrados.map((votante, idx) => (
+                    <tbody>
+                          {busqueda.trim() !== '' && votantesFiltrados.map((votante, idx) => (
+                            <tr key={votante.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+
+                              <td className="px-4 py-3">{votante.nombreCompleto}</td>
+
+                              <td className="px-4 py-3 font-mono">{votante.documento}</td>
+
+                              <td className="px-4 py-3">{votante.telefono}</td>
+
+                              {/* ESTE ES EL PUESTO — ya está correcto */}
+                              <td className="px-4 py-3">{votante.puesto}</td>
+
+                              <td className="px-4 py-3">{votante.mesa}</td>
+
+                              <td className="px-4 py-3">
+                                {lideres.find(l => l.id === votante.liderAsignado)?.nombre || '-'}
+                              </td>
+
+                              <td className="px-4 py-3 text-center">
+                                <button
+                                  onClick={() => toggleYaVoto(votante.id)}
+                                  className={`px-3 py-1 rounded-full text-sm font-semibold transition-colors ${
+                                    votante.yaVoto 
+                                      ? 'bg-green-500 text-white hover:bg-green-600' 
+                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                  }`}
+                                >
+                                  {votante.yaVoto ? '✓ Votó' : 'Marcar'}
+                                </button>
+                              </td>
+
+                            </tr>
+                          ))}
+
+                          {busqueda.trim() === '' && (
+                            <tr>
+                              <td colSpan="7" className="text-center py-6 text-gray-500">
+                                Escribe un nombre o documento para buscar un votante
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+
                       <tr key={votante.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
                         <td className="px-4 py-3">{votante.nombreCompleto}</td>
                         <td className="px-4 py-3 font-mono">{votante.documento}</td>
                         <td className="px-4 py-3">{votante.telefono}</td>
-                        <td className="px-4 py-3">{votante.barrio}</td>
+                        <td className="px-4 py-3">{votante.puesto}</td>
                         <td className="px-4 py-3">{votante.mesa}</td>
                         <td className="px-4 py-3">
                           {lideres.find(l => l.id === votante.liderAsignado)?.nombre || '-'}
@@ -793,7 +836,7 @@ const VotantesDB = () => {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      
                   </tbody>
                 </table>
                 {votantesFiltrados.length === 0 && (
