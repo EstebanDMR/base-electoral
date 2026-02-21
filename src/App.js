@@ -797,8 +797,6 @@ const VotantesDB = () => {
         )}
 
         {/* Vista Líderes */}
-
-        {/* Vista Líderes */}
         {vistaActual === 'lideres' && (
           <div className="space-y-6">
             {isAdmin && (
