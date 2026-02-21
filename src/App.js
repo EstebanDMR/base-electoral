@@ -425,7 +425,7 @@ const VotantesDB = () => {
             <button
               onClick={() => setVistaActual('busqueda')}
               className={`flex-1 px-6 py-4 font-semibold transition-colors ${
-                vistaActual === 'lideres'
+                vistaActual === 'busqueda'
                   ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-700'
                   : 'text-gray-600 hover:bg-gray-50'
               }`}  
