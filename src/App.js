@@ -423,7 +423,7 @@ const VotantesDB = () => {
               🔍 Búsqueda
             </button>
             <button
-              onClick={() => setVistaActual('lideres')}
+              onClick={() => setVistaActual('busqueda')}
               className={`flex-1 px-6 py-4 font-semibold transition-colors ${
                 vistaActual === 'lideres'
                   ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-700'
