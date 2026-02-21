@@ -445,6 +445,10 @@ const VotantesDB = () => {
           </div>
         </div>
 
+        </div>
+
+        {console.log('Vista actual:', vistaActual)}
+
         {/* Vista Votantes */}
         {vistaActual === 'votantes' && (
           <div className="space-y-6">
