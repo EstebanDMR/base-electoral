@@ -23,8 +23,6 @@ const VotantesDB = () => {
 
   const [votantes, setVotantes] = useState([]);
   const [lideres, setLideres] = useState([]);
-
-  // IDs de líderes expandidos
   const [lideresExpandidos, setLideresExpandidos] = useState(new Set());
 
   const [nuevoVotante, setNuevoVotante] = useState({
@@ -33,9 +31,8 @@ const VotantesDB = () => {
   });
   const [nuevoLider, setNuevoLider] = useState({ nombre: '', telefono: '', zona: '' });
 
-  const [filtroLider, setFiltroLider] = useState('');
   const [busqueda, setBusqueda] = useState('');
-  const [vistaActual, setVistaActual] = useState('votantes');
+  const [vistaActual, setVistaActual] = useState('busqueda');
 
   const [editandoVotante, setEditandoVotante] = useState(null);
   const [datosEdicion, setDatosEdicion] = useState(null);
@@ -144,15 +141,10 @@ const VotantesDB = () => {
     setEditandoLider(null); setDatosEdicionLider(null);
   };
 
-  const votantesBusqueda = votantes.filter(v => {
-    const matchB = busqueda.trim() !== '' && (
-      v.nombreCompleto.toLowerCase().includes(busqueda.toLowerCase()) || v.documento.includes(busqueda)
-    );
-    const matchL = !filtroLider || v.liderAsignado === filtroLider;
-    return matchB && matchL;
-  });
-
-  const votantesFiltrados = votantes.filter(v => !filtroLider || v.liderAsignado === filtroLider);
+  // Búsqueda: solo por texto, sin filtro de líder
+  const votantesBusqueda = busqueda.trim() === '' ? [] : votantes.filter(v =>
+    v.nombreCompleto.toLowerCase().includes(busqueda.toLowerCase()) || v.documento.includes(busqueda)
+  );
 
   const stats = {
     totalVotantes: votantes.length,
@@ -165,111 +157,136 @@ const VotantesDB = () => {
     })
   };
 
-  // ── Tabla reutilizable de votantes (con scroll horizontal) ──
-  const TablaVotantes = ({ lista, mostrarLider = true }) => (
-    <div className="overflow-x-auto">
-      <table className="w-full" style={{ minWidth: mostrarLider ? '1000px' : '860px' }}>
-        <thead className="bg-indigo-600 text-white">
-          <tr>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Nombre</th>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Documento</th>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Teléfono</th>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Dirección</th>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Barrio</th>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Municipio</th>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Mesa</th>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Puesto</th>
-            {mostrarLider && <th className="px-4 py-3 text-left whitespace-nowrap">Líder</th>}
-            <th className="px-4 py-3 text-center whitespace-nowrap">¿Ya votó?</th>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lista.length === 0 ? (
-            <tr><td colSpan={mostrarLider ? 11 : 10} className="text-center py-8 text-gray-400 italic text-sm">Sin votantes registrados</td></tr>
-          ) : lista.map((votante, idx) => (
-            <tr key={votante.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-              {editandoVotante === votante.id ? (
-                <>
-                  {['nombreCompleto','documento','telefono','direccion','barrio','municipio','mesa','puesto'].map(f => (
-                    <td key={f} className="px-3 py-2">
-                      <input type="text" value={datosEdicion[f] || ''}
-                        onChange={(e) => setDatosEdicion({...datosEdicion, [f]: e.target.value})}
-                        className="w-full px-2 py-1 border-2 border-indigo-300 rounded focus:border-indigo-500 focus:outline-none text-sm" style={{minWidth:'80px'}} />
-                    </td>
-                  ))}
-                  {mostrarLider && (
-                    <td className="px-3 py-2">
-                      <select value={datosEdicion.liderAsignado || ''}
-                        onChange={(e) => setDatosEdicion({...datosEdicion, liderAsignado: e.target.value})}
-                        className="w-full px-2 py-1 border-2 border-indigo-300 rounded focus:border-indigo-500 focus:outline-none text-sm" style={{minWidth:'100px'}}>
-                        <option value="">Sin líder</option>
-                        {lideres.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
-                      </select>
-                    </td>
-                  )}
-                  <td className="px-3 py-2 text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${votante.yaVoto ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {votante.yaVoto ? '✓ Votó' : 'Pendiente'}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-2 whitespace-nowrap">
-                      <button onClick={guardarEdicion} className="text-green-600 hover:text-green-800 font-semibold text-sm">Guardar</button>
-                      <button onClick={cancelarEdicion} className="text-gray-600 hover:text-gray-800 font-semibold text-sm">Cancelar</button>
-                    </div>
-                  </td>
-                </>
-              ) : (
-                <>
-                  <td className="px-4 py-3 whitespace-nowrap font-medium">{votante.nombreCompleto}</td>
-                  <td className="px-4 py-3 font-mono whitespace-nowrap">{votante.documento}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{votante.telefono || '-'}</td>
-                  <td className="px-4 py-3">{votante.direccion || '-'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{votante.barrio || '-'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{votante.municipio || '-'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{votante.mesa || '-'}</td>
-                  <td className="px-4 py-3">{votante.puesto || '-'}</td>
-                  {mostrarLider && (
-                    <td className="px-4 py-3 whitespace-nowrap">{lideres.find(l => l.id === votante.liderAsignado)?.nombre || '-'}</td>
-                  )}
-                  <td className="px-4 py-3 text-center">
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${votante.yaVoto ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {votante.yaVoto ? '✓ Votó' : 'Pendiente'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {isAdmin && (
-                      <div className="flex gap-2 whitespace-nowrap">
-                        <button onClick={() => iniciarEdicion(votante)} className="text-indigo-600 hover:text-indigo-800 font-semibold text-sm">Editar</button>
-                        <button onClick={() => eliminarVotante(votante.id)} className="text-red-600 hover:text-red-800 font-semibold text-sm">Eliminar</button>
-                      </div>
-                    )}
-                  </td>
-                </>
-              )}
+  // ── Tabla reutilizable ──
+  // colSpan dinámico: 8 campos fijos + líder? + yaVoto + acciones?
+  const TablaVotantes = ({ lista, mostrarLider = true }) => {
+    const colBase = 8; // nombre, doc, tel, dir, barrio, mun, mesa, puesto
+    const colTotal = colBase + (mostrarLider ? 1 : 0) + 1 + (isAdmin ? 1 : 0); // +líder +yaVoto +acciones
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full" style={{ minWidth: isAdmin ? (mostrarLider ? '1080px' : '940px') : (mostrarLider ? '920px' : '780px') }}>
+          <thead className="bg-indigo-600 text-white">
+            <tr>
+              <th className="px-4 py-3 text-left whitespace-nowrap">Nombre</th>
+              <th className="px-4 py-3 text-left whitespace-nowrap">Documento</th>
+              <th className="px-4 py-3 text-left whitespace-nowrap">Teléfono</th>
+              <th className="px-4 py-3 text-left whitespace-nowrap">Dirección</th>
+              <th className="px-4 py-3 text-left whitespace-nowrap">Barrio</th>
+              <th className="px-4 py-3 text-left whitespace-nowrap">Municipio</th>
+              <th className="px-4 py-3 text-left whitespace-nowrap">Mesa</th>
+              <th className="px-4 py-3 text-left whitespace-nowrap">Puesto</th>
+              {mostrarLider && <th className="px-4 py-3 text-left whitespace-nowrap">Líder</th>}
+              <th className="px-4 py-3 text-center whitespace-nowrap">¿Ya votó?</th>
+              {isAdmin && <th className="px-4 py-3 text-left whitespace-nowrap">Acciones</th>}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+          </thead>
+          <tbody>
+            {lista.length === 0 ? (
+              <tr>
+                <td colSpan={colTotal} className="text-center py-8 text-gray-400 italic text-sm">
+                  Sin votantes registrados
+                </td>
+              </tr>
+            ) : lista.map((votante, idx) => (
+              <tr key={votante.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                {editandoVotante === votante.id ? (
+                  // ── Fila en modo edición (solo admin llega aquí) ──
+                  <>
+                    {['nombreCompleto','documento','telefono','direccion','barrio','municipio','mesa','puesto'].map(f => (
+                      <td key={f} className="px-3 py-2">
+                        <input type="text" value={datosEdicion[f] || ''}
+                          onChange={(e) => setDatosEdicion({...datosEdicion, [f]: e.target.value})}
+                          className="w-full px-2 py-1 border-2 border-indigo-300 rounded focus:border-indigo-500 focus:outline-none text-sm"
+                          style={{minWidth:'80px'}} />
+                      </td>
+                    ))}
+                    {mostrarLider && (
+                      <td className="px-3 py-2">
+                        <select value={datosEdicion.liderAsignado || ''}
+                          onChange={(e) => setDatosEdicion({...datosEdicion, liderAsignado: e.target.value})}
+                          className="w-full px-2 py-1 border-2 border-indigo-300 rounded focus:border-indigo-500 focus:outline-none text-sm"
+                          style={{minWidth:'100px'}}>
+                          <option value="">Sin líder</option>
+                          {lideres.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+                        </select>
+                      </td>
+                    )}
+                    <td className="px-3 py-2 text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${votante.yaVoto ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                        {votante.yaVoto ? '✓ Votó' : 'Pendiente'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex gap-2 whitespace-nowrap">
+                        <button onClick={guardarEdicion} className="text-green-600 hover:text-green-800 font-semibold text-sm">Guardar</button>
+                        <button onClick={cancelarEdicion} className="text-gray-600 hover:text-gray-800 font-semibold text-sm">Cancelar</button>
+                      </div>
+                    </td>
+                  </>
+                ) : (
+                  // ── Fila en modo visualización ──
+                  <>
+                    <td className="px-4 py-3 whitespace-nowrap font-medium">{votante.nombreCompleto}</td>
+                    <td className="px-4 py-3 font-mono whitespace-nowrap">{votante.documento}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{votante.telefono || '-'}</td>
+                    <td className="px-4 py-3">{votante.direccion || '-'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{votante.barrio || '-'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{votante.municipio || '-'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{votante.mesa || '-'}</td>
+                    <td className="px-4 py-3">{votante.puesto || '-'}</td>
+                    {mostrarLider && (
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {lideres.find(l => l.id === votante.liderAsignado)?.nombre || '-'}
+                      </td>
+                    )}
+                    <td className="px-4 py-3 text-center">
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${votante.yaVoto ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                        {votante.yaVoto ? '✓ Votó' : 'Pendiente'}
+                      </span>
+                    </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2 whitespace-nowrap">
+                          <button onClick={() => iniciarEdicion(votante)} className="text-indigo-600 hover:text-indigo-800 font-semibold text-sm">Editar</button>
+                          <button onClick={() => eliminarVotante(votante.id)} className="text-red-600 hover:text-red-800 font-semibold text-sm">Eliminar</button>
+                        </div>
+                      </td>
+                    )}
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  // Tabs visibles según rol
+  const tabs = [
+    { id: 'busqueda',     emoji: '🔍', label: 'Búsqueda' },
+    ...(isAdmin ? [{ id: 'votantes', emoji: '👥', label: `Votantes (${votantes.length})` }] : []),
+    { id: 'lideres',      emoji: '🎯', label: `Líderes (${lideres.length})` },
+    { id: 'estadisticas', emoji: '📊', label: 'Estadísticas' },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-2 sm:p-4">
       <div className="max-w-7xl mx-auto">
 
-        {/* Header */}
+        {/* ── Header ── */}
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-4">
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <Users className="w-7 h-7 text-indigo-600 shrink-0" />
             <h1 className="text-xl sm:text-3xl font-bold text-gray-800">Base de Datos Electoral</h1>
-            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap">🌐 En vivo</span>
+            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap">
+              🌐 En vivo
+            </span>
           </div>
           {!isAdmin ? (
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
               <div className="relative flex-1">
-                <input type={showPassword ? "text" : "password"} value={password}
+                <input type={showPassword ? 'text' : 'password'} value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
                   placeholder="Contraseña de administrador"
@@ -289,23 +306,21 @@ const VotantesDB = () => {
           ) : (
             <div className="flex items-center justify-between">
               <span className="text-green-600 font-semibold">✓ Rol: Administrador</span>
-              <button onClick={() => setIsAdmin(false)} className="text-sm text-gray-600 hover:text-gray-800">Cerrar sesión</button>
+              <button onClick={() => { setIsAdmin(false); setVistaActual('busqueda'); }}
+                className="text-sm text-gray-600 hover:text-gray-800">Cerrar sesión</button>
             </div>
           )}
         </div>
 
-        {/* Tabs */}
+        {/* ── Tabs ── */}
         <div className="bg-white rounded-lg shadow-lg mb-4 overflow-hidden">
           <div className="flex overflow-x-auto border-b">
-            {[
-              { id: 'busqueda', emoji: '🔍', label: 'Búsqueda' },
-              { id: 'votantes', emoji: '👥', label: `Votantes (${votantes.length})` },
-              { id: 'lideres', emoji: '🎯', label: `Líderes (${lideres.length})` },
-              { id: 'estadisticas', emoji: '📊', label: 'Estadísticas' },
-            ].map(tab => (
+            {tabs.map(tab => (
               <button key={tab.id} onClick={() => setVistaActual(tab.id)}
                 className={`flex-1 min-w-[70px] px-2 sm:px-6 py-3 sm:py-4 font-semibold transition-colors text-sm sm:text-base whitespace-nowrap ${
-                  vistaActual === tab.id ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-700' : 'text-gray-600 hover:bg-gray-50'
+                  vistaActual === tab.id
+                    ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-700'
+                    : 'text-gray-600 hover:bg-gray-50'
                 }`}>
                 <span>{tab.emoji}</span>
                 <span className="hidden sm:inline ml-1">{tab.label}</span>
@@ -315,23 +330,18 @@ const VotantesDB = () => {
           </div>
         </div>
 
-        {/* ===== BÚSQUEDA ===== */}
+        {/* ══════════════════════════════════
+            BÚSQUEDA  (sin filtro de líder)
+        ══════════════════════════════════ */}
         {vistaActual === 'busqueda' && (
           <div className="space-y-4">
             <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-4">Buscar Votantes</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input type="text" placeholder="Buscar por nombre o documento..."
-                    value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none" />
-                </div>
-                <select value={filtroLider} onChange={(e) => setFiltroLider(e.target.value)}
-                  className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none">
-                  <option value="">Todos los líderes</option>
-                  {lideres.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
-                </select>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input type="text" placeholder="Buscar por nombre o documento..."
+                  value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none text-base" />
               </div>
             </div>
 
@@ -357,7 +367,9 @@ const VotantesDB = () => {
                         </div>
                         <button onClick={() => toggleYaVoto(votante.id)}
                           className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-colors shrink-0 ml-2 ${
-                            votante.yaVoto ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            votante.yaVoto
+                              ? 'bg-green-500 text-white hover:bg-green-600'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                           }`}>
                           {votante.yaVoto ? '✓ Votó' : 'Marcar voto'}
                         </button>
@@ -378,71 +390,75 @@ const VotantesDB = () => {
           </div>
         )}
 
-        {/* ===== VOTANTES (tabla scroll horizontal) ===== */}
-        {vistaActual === 'votantes' && (
+        {/* ══════════════════════════════════
+            VOTANTES — solo admin
+        ══════════════════════════════════ */}
+        {vistaActual === 'votantes' && isAdmin && (
           <div className="space-y-4">
+            {/* Encabezado + botones */}
             <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-xl font-bold text-gray-800">Lista de Votantes</h2>
-                {isAdmin && (
-                  <div className="flex flex-wrap gap-2">
-                    <button onClick={exportarAExcel}
-                      className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm">
-                      📊 Exportar a Excel
-                    </button>
-                    <button onClick={eliminarTodosLosVotantes}
-                      className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-sm">
-                      🗑️ Eliminar toda la lista
-                    </button>
-                  </div>
-                )}
+                <h2 className="text-xl font-bold text-gray-800">Lista Completa de Votantes</h2>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={exportarAExcel}
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm">
+                    📊 Exportar a Excel
+                  </button>
+                  <button onClick={eliminarTodosLosVotantes}
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-sm">
+                    🗑️ Eliminar toda la lista
+                  </button>
+                </div>
               </div>
             </div>
 
             {mensajeError && (
               <div className="bg-red-100 border-2 border-red-500 text-red-800 px-4 py-3 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-3"><span className="text-xl">⛔</span><span className="font-semibold text-sm">{mensajeError}</span></div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">⛔</span>
+                  <span className="font-semibold text-sm">{mensajeError}</span>
+                </div>
                 <button onClick={() => setMensajeError(null)} className="text-red-600 hover:text-red-800 font-bold text-xl ml-2">✕</button>
               </div>
             )}
 
-            {isAdmin && (
-              <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <UserPlus className="w-6 h-6 text-indigo-600" />
-                  Registrar Nuevo Votante
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {[
-                    { key: 'nombreCompleto', ph: 'Nombre completo *' },
-                    { key: 'documento', ph: 'Documento (cédula) *' },
-                    { key: 'telefono', ph: 'Teléfono' },
-                    { key: 'direccion', ph: 'Dirección' },
-                    { key: 'barrio', ph: 'Barrio' },
-                    { key: 'municipio', ph: 'Municipio' },
-                    { key: 'mesa', ph: 'Mesa de votación' },
-                    { key: 'puesto', ph: 'Puesto de votación' },
-                  ].map(f => (
-                    <input key={f.key} type="text" placeholder={f.ph} value={nuevoVotante[f.key]}
-                      onChange={(e) => setNuevoVotante({...nuevoVotante, [f.key]: e.target.value})}
-                      className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none" />
-                  ))}
-                  <select value={nuevoVotante.liderAsignado}
-                    onChange={(e) => setNuevoVotante({...nuevoVotante, liderAsignado: e.target.value})}
-                    className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none">
-                    <option value="">Seleccionar líder</option>
-                    {lideres.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
-                  </select>
-                </div>
-                <button onClick={agregarVotante}
-                  className="mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold w-full">
-                  ✓ Registrar Votante
-                </button>
+            {/* Formulario nuevo votante */}
+            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <UserPlus className="w-6 h-6 text-indigo-600" />
+                Registrar Nuevo Votante
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {[
+                  { key: 'nombreCompleto', ph: 'Nombre completo *' },
+                  { key: 'documento',      ph: 'Documento (cédula) *' },
+                  { key: 'telefono',       ph: 'Teléfono' },
+                  { key: 'direccion',      ph: 'Dirección' },
+                  { key: 'barrio',         ph: 'Barrio' },
+                  { key: 'municipio',      ph: 'Municipio' },
+                  { key: 'mesa',           ph: 'Mesa de votación' },
+                  { key: 'puesto',         ph: 'Puesto de votación' },
+                ].map(f => (
+                  <input key={f.key} type="text" placeholder={f.ph} value={nuevoVotante[f.key]}
+                    onChange={(e) => setNuevoVotante({...nuevoVotante, [f.key]: e.target.value})}
+                    className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none" />
+                ))}
+                <select value={nuevoVotante.liderAsignado}
+                  onChange={(e) => setNuevoVotante({...nuevoVotante, liderAsignado: e.target.value})}
+                  className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none">
+                  <option value="">Seleccionar líder</option>
+                  {lideres.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+                </select>
               </div>
-            )}
+              <button onClick={agregarVotante}
+                className="mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold w-full">
+                ✓ Registrar Votante
+              </button>
+            </div>
 
+            {/* Tabla */}
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-              <TablaVotantes lista={votantesFiltrados} mostrarLider={true} />
+              <TablaVotantes lista={votantes} mostrarLider={true} />
               {votantes.length === 0 && (
                 <div className="text-center py-12 text-gray-500">No hay votantes registrados</div>
               )}
@@ -450,9 +466,12 @@ const VotantesDB = () => {
           </div>
         )}
 
-        {/* ===== LÍDERES (tarjetas expandibles) ===== */}
+        {/* ══════════════════════════════════
+            LÍDERES — tarjetas expandibles
+        ══════════════════════════════════ */}
         {vistaActual === 'lideres' && (
           <div className="space-y-4">
+            {/* Formulario nuevo líder (solo admin) */}
             {isAdmin && (
               <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
                 <h2 className="text-xl font-bold text-gray-800 mb-4">Registrar Nuevo Líder</h2>
@@ -475,7 +494,9 @@ const VotantesDB = () => {
             )}
 
             {lideres.length === 0 ? (
-              <div className="bg-white rounded-lg shadow-lg p-10 text-center text-gray-500">No hay líderes registrados</div>
+              <div className="bg-white rounded-lg shadow-lg p-10 text-center text-gray-500">
+                No hay líderes registrados
+              </div>
             ) : (
               <div className="space-y-3">
                 {lideres.map(lider => {
@@ -486,7 +507,7 @@ const VotantesDB = () => {
 
                   return (
                     <div key={lider.id} className="bg-white rounded-lg shadow-lg overflow-hidden">
-                      {/* Cabecera */}
+                      {/* Cabecera de tarjeta */}
                       <div
                         className={`p-4 transition-colors select-none ${editandoLider !== lider.id ? 'cursor-pointer hover:bg-gray-50' : ''}`}
                         onClick={() => editandoLider !== lider.id && toggleLider(lider.id)}
@@ -496,7 +517,8 @@ const VotantesDB = () => {
                             {['nombre','telefono','zona'].map(f => (
                               <input key={f} type="text" value={datosEdicionLider[f] || ''}
                                 onChange={(e) => setDatosEdicionLider({...datosEdicionLider, [f]: e.target.value})}
-                                placeholder={f} className="w-full px-3 py-2 border-2 border-indigo-300 rounded text-sm focus:border-indigo-500 focus:outline-none" />
+                                placeholder={f}
+                                className="w-full px-3 py-2 border-2 border-indigo-300 rounded text-sm focus:border-indigo-500 focus:outline-none" />
                             ))}
                             <div className="flex gap-2">
                               <button onClick={guardarEdicionLider} className="flex-1 py-2 bg-green-600 text-white rounded font-semibold text-sm">Guardar</button>
@@ -506,36 +528,46 @@ const VotantesDB = () => {
                         ) : (
                           <div className="flex items-center gap-3">
                             <div className="flex-1 min-w-0">
-                              {/* Nombre + datos */}
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mb-2">
                                 <span className="font-bold text-lg text-gray-800">{lider.nombre}</span>
-                                {lider.zona && <span className="text-sm text-gray-500">📍 {lider.zona}</span>}
+                                {lider.zona     && <span className="text-sm text-gray-500">📍 {lider.zona}</span>}
                                 {lider.telefono && <span className="text-sm text-gray-500">📞 {lider.telefono}</span>}
                               </div>
-                              {/* Barra de progreso */}
                               <div className="flex items-center gap-3">
                                 <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                  <div className="bg-indigo-500 h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                                  <div className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
+                                    style={{ width: `${pct}%` }} />
                                 </div>
-                                <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">{yv}/{vl.length} votaron ({pct}%)</span>
+                                <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">
+                                  {yv}/{vl.length} votaron ({pct}%)
+                                </span>
                               </div>
                             </div>
 
-                            {/* Badges + botones + chevron */}
                             <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                               <div className="flex gap-1 flex-wrap">
-                                <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full text-xs font-semibold">{vl.length} total</span>
-                                <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-semibold">✓ {yv}</span>
+                                <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full text-xs font-semibold">
+                                  {vl.length} total
+                                </span>
+                                <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-semibold">
+                                  ✓ {yv}
+                                </span>
                                 {vl.length - yv > 0 && (
-                                  <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full text-xs font-semibold">⏳ {vl.length - yv}</span>
+                                  <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full text-xs font-semibold">
+                                    ⏳ {vl.length - yv}
+                                  </span>
                                 )}
                               </div>
                               {isAdmin && (
                                 <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
                                   <button onClick={() => iniciarEdicionLider(lider)}
-                                    className="px-2.5 py-1 text-xs border border-indigo-400 text-indigo-600 rounded hover:bg-indigo-50 font-semibold">Editar</button>
+                                    className="px-2.5 py-1 text-xs border border-indigo-400 text-indigo-600 rounded hover:bg-indigo-50 font-semibold">
+                                    Editar
+                                  </button>
                                   <button onClick={() => eliminarLider(lider.id)}
-                                    className="px-2.5 py-1 text-xs border border-red-400 text-red-600 rounded hover:bg-red-50 font-semibold">Eliminar</button>
+                                    className="px-2.5 py-1 text-xs border border-red-400 text-red-600 rounded hover:bg-red-50 font-semibold">
+                                    Eliminar
+                                  </button>
                                 </div>
                               )}
                               <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${expandido ? 'rotate-180' : ''}`} />
@@ -559,7 +591,7 @@ const VotantesDB = () => {
               </div>
             )}
 
-            {/* Grupo: sin líder asignado */}
+            {/* Grupo: sin líder */}
             {(() => {
               const sinLider = votantes.filter(v => !v.liderAsignado || !lideres.find(l => l.id === v.liderAsignado));
               if (sinLider.length === 0) return null;
@@ -570,7 +602,9 @@ const VotantesDB = () => {
                     onClick={() => toggleLider('__sin_lider__')}>
                     <div className="flex items-center gap-3">
                       <span className="font-semibold text-gray-400 italic">Sin líder asignado</span>
-                      <span className="bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-full text-xs font-semibold">{sinLider.length} votantes</span>
+                      <span className="bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-full text-xs font-semibold">
+                        {sinLider.length} votantes
+                      </span>
                     </div>
                     <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${expandido ? 'rotate-180' : ''}`} />
                   </div>
@@ -585,15 +619,19 @@ const VotantesDB = () => {
           </div>
         )}
 
-        {/* ===== ESTADÍSTICAS ===== */}
+        {/* ══════════════════════════════════
+            ESTADÍSTICAS
+        ══════════════════════════════════ */}
         {vistaActual === 'estadisticas' && (
           <div className="space-y-4 sm:space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
               {[
-                { label: 'Total Votantes', value: stats.totalVotantes, color: 'text-indigo-600', Icon: Users, ic: 'text-indigo-200' },
-                { label: 'Ya Votaron', value: stats.yaVotaron, color: 'text-green-600', Icon: BarChart3, ic: 'text-green-200', sub: `${stats.totalVotantes > 0 ? Math.round((stats.yaVotaron/stats.totalVotantes)*100) : 0}% del total` },
-                { label: 'Total Líderes', value: stats.totalLideres, color: 'text-purple-600', Icon: Users, ic: 'text-purple-200' },
-                { label: 'Promedio / Líder', value: stats.totalLideres > 0 ? Math.round(stats.totalVotantes/stats.totalLideres) : 0, color: 'text-orange-600', Icon: BarChart3, ic: 'text-orange-200' },
+                { label: 'Total Votantes', value: stats.totalVotantes, color: 'text-indigo-600', Icon: Users,     ic: 'text-indigo-200' },
+                { label: 'Ya Votaron',     value: stats.yaVotaron,     color: 'text-green-600',  Icon: BarChart3, ic: 'text-green-200',
+                  sub: `${stats.totalVotantes > 0 ? Math.round((stats.yaVotaron/stats.totalVotantes)*100) : 0}% del total` },
+                { label: 'Total Líderes',  value: stats.totalLideres,  color: 'text-purple-600', Icon: Users,     ic: 'text-purple-200' },
+                { label: 'Prom. / Líder',  value: stats.totalLideres > 0 ? Math.round(stats.totalVotantes/stats.totalLideres) : 0,
+                  color: 'text-orange-600', Icon: BarChart3, ic: 'text-orange-200' },
               ].map(item => (
                 <div key={item.label} className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
                   <div className="flex items-center justify-between">
@@ -635,19 +673,28 @@ const VotantesDB = () => {
                     </div>
                   </div>
                 ))}
-                {stats.votantesPorLider.length === 0 && <p className="text-center text-gray-500 py-8">No hay datos disponibles</p>}
+                {stats.votantesPorLider.length === 0 && (
+                  <p className="text-center text-gray-500 py-8">No hay datos disponibles</p>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* Footer */}
+        {/* ── Footer ── */}
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mt-4">
           <h3 className="font-bold text-gray-800 mb-2">ℹ️ Información del Sistema</h3>
-          <p className="text-sm text-gray-600 mb-1">👤 <strong>Usuario Normal:</strong> Puede ver votantes, buscar y marcar quién ya votó.</p>
-          <p className="text-sm text-gray-600 mb-1">👨‍💼 <strong>Administrador:</strong> Puede agregar, editar, eliminar votantes y líderes. También puede exportar y desmarcar votos.</p>
-          <p className="text-sm text-gray-600">🌐 <strong>Sincronización:</strong> Todos los cambios se sincronizan automáticamente en tiempo real.</p>
+          <p className="text-sm text-gray-600 mb-1">
+            👤 <strong>Usuario Normal:</strong> Puede buscar votantes, ver líderes y marcar quién ya votó.
+          </p>
+          <p className="text-sm text-gray-600 mb-1">
+            👨‍💼 <strong>Administrador:</strong> Acceso completo: agregar, editar, eliminar, exportar y desmarcar votos.
+          </p>
+          <p className="text-sm text-gray-600">
+            🌐 <strong>Sincronización:</strong> Todos los cambios se sincronizan automáticamente en tiempo real.
+          </p>
         </div>
+
       </div>
     </div>
   );
