@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, Search, BarChart3, Eye, EyeOff, ChevronDown } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, push, remove, update } from 'firebase/database';
+import * as XLSX from 'xlsx';
 
 const firebaseConfig = {
   apiKey: "AIzaSyACbhnT4AmukbRlRopBylUtDrNwGFivdCY",
@@ -49,20 +50,45 @@ const VotantesDB = () => {
   };
 
   const exportarAExcel = () => {
-    const enc = ['Nombre','Documento','Teléfono','Dirección','Barrio','Municipio','Mesa','Puesto','Líder','¿Ya votó?'];
-    const filas = votantes.map(v => {
-      const l = lideres.find(l => l.id === v.liderAsignado);
-      return [v.nombreCompleto, v.documento, v.telefono, v.direccion, v.barrio, v.municipio, v.mesa, v.puesto, l ? l.nombre : '-', v.yaVoto ? 'Sí' : 'No'];
+    // Crear datos para Excel
+    const datos = votantes.map(v => {
+      const lider = lideres.find(l => l.id === v.liderAsignado);
+      return {
+        'Nombre': v.nombreCompleto,
+        'Documento': v.documento,
+        'Teléfono': v.telefono || '-',
+        'Dirección': v.direccion || '-',
+        'Barrio': v.barrio || '-',
+        'Municipio': v.municipio || '-',
+        'Mesa': v.mesa || '-',
+        'Puesto': v.puesto || '-',
+        'Líder': lider ? lider.nombre : '-',
+        '¿Ya votó?': v.yaVoto ? 'Sí' : 'No'
+      };
     });
-    const csv = [enc.join(','), ...filas.map(f => f.map(c => `"${c||''}"`).join(','))].join('\n');
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.setAttribute('href', URL.createObjectURL(blob));
-    link.setAttribute('download', `votantes_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    // Crear libro de Excel
+    const worksheet = XLSX.utils.json_to_sheet(datos);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Votantes');
+
+    // Ajustar ancho de columnas
+    const columnWidths = [
+      { wch: 25 }, // Nombre
+      { wch: 15 }, // Documento
+      { wch: 12 }, // Teléfono
+      { wch: 30 }, // Dirección
+      { wch: 15 }, // Barrio
+      { wch: 15 }, // Municipio
+      { wch: 8 },  // Mesa
+      { wch: 20 }, // Puesto
+      { wch: 20 }, // Líder
+      { wch: 10 }  // ¿Ya votó?
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    // Descargar archivo
+    XLSX.writeFile(workbook, `votantes_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const eliminarTodosLosVotantes = async () => {
@@ -158,10 +184,9 @@ const VotantesDB = () => {
   };
 
   // ── Tabla reutilizable ──
-  // colSpan dinámico: 8 campos fijos + líder? + yaVoto + acciones?
   const TablaVotantes = ({ lista, mostrarLider = true }) => {
-    const colBase = 8; // nombre, doc, tel, dir, barrio, mun, mesa, puesto
-    const colTotal = colBase + (mostrarLider ? 1 : 0) + 1 + (isAdmin ? 1 : 0); // +líder +yaVoto +acciones
+    const colBase = 8;
+    const colTotal = colBase + (mostrarLider ? 1 : 0) + 1 + (isAdmin ? 1 : 0);
     return (
       <div className="overflow-x-auto">
         <table className="w-full" style={{ minWidth: isAdmin ? (mostrarLider ? '1080px' : '940px') : (mostrarLider ? '920px' : '780px') }}>
@@ -190,7 +215,6 @@ const VotantesDB = () => {
             ) : lista.map((votante, idx) => (
               <tr key={votante.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
                 {editandoVotante === votante.id ? (
-                  // ── Fila en modo edición (solo admin llega aquí) ──
                   <>
                     {['nombreCompleto','documento','telefono','direccion','barrio','municipio','mesa','puesto'].map(f => (
                       <td key={f} className="px-3 py-2">
@@ -224,7 +248,6 @@ const VotantesDB = () => {
                     </td>
                   </>
                 ) : (
-                  // ── Fila en modo visualización ──
                   <>
                     <td className="px-4 py-3 whitespace-nowrap font-medium">{votante.nombreCompleto}</td>
                     <td className="px-4 py-3 font-mono whitespace-nowrap">{votante.documento}</td>
@@ -262,7 +285,6 @@ const VotantesDB = () => {
     );
   };
 
-  // Tabs visibles según rol
   const tabs = [
     { id: 'busqueda',     emoji: '🔍', label: 'Búsqueda' },
     ...(isAdmin ? [{ id: 'votantes', emoji: '👥', label: `Votantes (${votantes.length})` }] : []),
@@ -273,8 +295,6 @@ const VotantesDB = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-2 sm:p-4">
       <div className="max-w-7xl mx-auto">
-
-        {/* ── Header ── */}
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-4">
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <Users className="w-7 h-7 text-indigo-600 shrink-0" />
@@ -312,7 +332,6 @@ const VotantesDB = () => {
           )}
         </div>
 
-        {/* ── Tabs ── */}
         <div className="bg-white rounded-lg shadow-lg mb-4 overflow-hidden">
           <div className="flex overflow-x-auto border-b">
             {tabs.map(tab => (
@@ -330,9 +349,6 @@ const VotantesDB = () => {
           </div>
         </div>
 
-        {/* ══════════════════════════════════
-            BÚSQUEDA  (sin filtro de líder)
-        ══════════════════════════════════ */}
         {vistaActual === 'busqueda' && (
           <div className="space-y-4">
             <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
@@ -390,12 +406,8 @@ const VotantesDB = () => {
           </div>
         )}
 
-        {/* ══════════════════════════════════
-            VOTANTES — solo admin
-        ══════════════════════════════════ */}
         {vistaActual === 'votantes' && isAdmin && (
           <div className="space-y-4">
-            {/* Encabezado + botones */}
             <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-xl font-bold text-gray-800">Lista Completa de Votantes</h2>
@@ -422,7 +434,6 @@ const VotantesDB = () => {
               </div>
             )}
 
-            {/* Formulario nuevo votante */}
             <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <UserPlus className="w-6 h-6 text-indigo-600" />
@@ -456,22 +467,14 @@ const VotantesDB = () => {
               </button>
             </div>
 
-            {/* Tabla */}
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">
               <TablaVotantes lista={votantes} mostrarLider={true} />
-              {votantes.length === 0 && (
-                <div className="text-center py-12 text-gray-500">No hay votantes registrados</div>
-              )}
             </div>
           </div>
         )}
 
-        {/* ══════════════════════════════════
-            LÍDERES — tarjetas expandibles
-        ══════════════════════════════════ */}
         {vistaActual === 'lideres' && (
           <div className="space-y-4">
-            {/* Formulario nuevo líder (solo admin) */}
             {isAdmin && (
               <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
                 <h2 className="text-xl font-bold text-gray-800 mb-4">Registrar Nuevo Líder</h2>
@@ -507,7 +510,6 @@ const VotantesDB = () => {
 
                   return (
                     <div key={lider.id} className="bg-white rounded-lg shadow-lg overflow-hidden">
-                      {/* Cabecera de tarjeta */}
                       <div
                         className={`p-4 transition-colors select-none ${editandoLider !== lider.id ? 'cursor-pointer hover:bg-gray-50' : ''}`}
                         onClick={() => editandoLider !== lider.id && toggleLider(lider.id)}
@@ -576,7 +578,6 @@ const VotantesDB = () => {
                         )}
                       </div>
 
-                      {/* Panel expandido */}
                       {expandido && editandoLider !== lider.id && (
                         <div className="border-t border-indigo-100">
                           <div className="px-4 py-2 bg-indigo-50">
@@ -591,7 +592,6 @@ const VotantesDB = () => {
               </div>
             )}
 
-            {/* Grupo: sin líder */}
             {(() => {
               const sinLider = votantes.filter(v => !v.liderAsignado || !lideres.find(l => l.id === v.liderAsignado));
               if (sinLider.length === 0) return null;
@@ -619,9 +619,6 @@ const VotantesDB = () => {
           </div>
         )}
 
-        {/* ══════════════════════════════════
-            ESTADÍSTICAS
-        ══════════════════════════════════ */}
         {vistaActual === 'estadisticas' && (
           <div className="space-y-4 sm:space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
@@ -673,15 +670,11 @@ const VotantesDB = () => {
                     </div>
                   </div>
                 ))}
-                {stats.votantesPorLider.length === 0 && (
-                  <p className="text-center text-gray-500 py-8">No hay datos disponibles</p>
-                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* ── Footer ── */}
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mt-4">
           <h3 className="font-bold text-gray-800 mb-2">ℹ️ Información del Sistema</h3>
           <p className="text-sm text-gray-600 mb-1">
