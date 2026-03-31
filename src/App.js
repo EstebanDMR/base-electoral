@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, LayoutDashboard, Search, FileBarChart2, Copy, CheckCircle2, Shield } from 'lucide-react';
+import { Users, LayoutDashboard, Search, FileBarChart2, Copy, CheckCircle2, Shield, RefreshCw, AlertTriangle } from 'lucide-react';
 import { logoutUser } from './authService';
 import { useVotantesData } from './hooks/useVotantesData';
 import { Login } from './components/Login';
@@ -12,7 +12,10 @@ const VotantesDB = () => {
   const [busqueda, setBusqueda] = useState('');
   const [vistaActual, setVistaActual] = useState('busqueda');
   const [codigoCopiado, setCodigoCopiado] = useState(false);
-  const [codigoIngresado, setCodigoIngresado] = useState('');
+  const [nuevoAlias, setNuevoAlias] = useState('');
+  const [estaEditandoAlias, setEstaEditandoAlias] = useState(false);
+  const [codigoRevincular, setCodigoRevincular] = useState('');
+  const [revinculando, setRevinculando] = useState(false);
 
   const { 
     votantes, 
@@ -29,28 +32,49 @@ const VotantesDB = () => {
     agregarLider,
     editarLider,
     eliminarLider,
-    vincularAEquipo
+    vincularAEquipo,
+    teamAlias,
+    adminAlias,
+    accessDenied,
+    crearAliasEquipo
   } = useVotantesData();
 
   if (!firebaseUser) return <Login />;
 
   const handleLogout = async () => {
-    try { await logoutUser(); } catch (e) { console.error(e); }
+    try { 
+      await logoutUser(); 
+      setNuevoAlias('');
+    } catch (e) { console.error(e); }
   };
 
   const copiarCodigo = () => {
-    navigator.clipboard.writeText(firebaseUser.uid);
+    navigator.clipboard.writeText(teamAlias || firebaseUser.uid);
     setCodigoCopiado(true);
     setTimeout(() => setCodigoCopiado(false), 2000);
   };
 
-  const handleVincular = async () => {
+  const handleCrearAlias = async () => {
+    if (!nuevoAlias.trim()) return;
     try {
-      await vincularAEquipo(codigoIngresado);
-      alert('¡Te has vinculado al equipo exitosamente! Ahora puedes buscar votantes y marcar su asistencia.');
-      setCodigoIngresado('');
+      await crearAliasEquipo(nuevoAlias);
+      setEstaEditandoAlias(false);
     } catch (error) {
        alert(error.message);
+    }
+  };
+
+  const handleRecuperarAcceso = async () => {
+    if (!codigoRevincular.trim()) return;
+    setRevinculando(true);
+    try {
+      await vincularAEquipo(codigoRevincular);
+      alert('¡Código aceptado! Has recuperado el acceso al equipo.');
+      setCodigoRevincular('');
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setRevinculando(false);
     }
   };
 
@@ -121,31 +145,44 @@ const VotantesDB = () => {
           <div className="bg-[#152a6b]/80 border-t border-white/5 backdrop-blur-md">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-4 text-sm">
               {isAdmin ? (
-                <div className="flex items-center gap-2 w-full sm:w-auto text-blue-100">
-                   <span className="font-medium text-[13px] opacity-80">Tu Código de Equipo:</span>
-                   <code className="font-bold tracking-wide select-all">{firebaseUser.uid}</code>
-                   <button onClick={copiarCodigo} className="p-1 hover:bg-white/10 rounded transition-colors" title="Copiar código">
-                     {codigoCopiado ? <CheckCircle2 className="w-4 h-4 text-emerald-400"/> : <Copy className="w-4 h-4 text-blue-200"/>}
-                   </button>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto text-blue-100 mb-4 sm:mb-0">
+                   <span className="font-medium text-[13px] opacity-80">Código de Equipo:</span>
+                   
+                   {teamAlias && !estaEditandoAlias ? (
+                     <div className="flex items-center gap-2">
+                        <code className="bg-[#0f1d4a] px-3 py-1 rounded-lg text-emerald-400 font-bold tracking-widest text-[14px] uppercase select-all shadow-inner border border-[#1a2d5e]">
+                          {teamAlias}
+                        </code>
+                        <button onClick={copiarCodigo} className="p-1 hover:bg-white/10 rounded transition-colors" title="Copiar código">
+                          {codigoCopiado ? <CheckCircle2 className="w-5 h-5 text-emerald-400"/> : <Copy className="w-5 h-5 text-blue-200"/>}
+                        </button>
+                        <button onClick={() => setEstaEditandoAlias(true)} className="p-1 hover:bg-red-500/20 rounded transition-colors group" title="Regenerar Código (Expulsará a todos)">
+                          <RefreshCw className="w-4 h-4 text-red-300 group-hover:text-red-400"/>
+                        </button>
+                     </div>
+                   ) : (
+                     <div className="flex gap-0 sm:gap-2 w-full sm:w-auto mt-1 sm:mt-0">
+                        <input type="text" placeholder={teamAlias ? "Nuevo alias..." : "Ej: MiguelElectoral"}
+                          value={nuevoAlias} onChange={(e) => setNuevoAlias(e.target.value)}
+                          className="px-3 py-1.5 bg-[#0f1d4a] border border-[#0f1d4a] text-white placeholder-blue-300/50 rounded-l-lg sm:rounded-lg outline-none focus:ring-1 focus:ring-emerald-400 text-[13px] w-full sm:w-48 font-mono flex-1 min-w-[120px]"
+                        />
+                        <button onClick={handleCrearAlias} className="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-1.5 rounded-none sm:rounded-lg text-[13px] font-bold transition-all whitespace-nowrap border border-emerald-500">
+                           {teamAlias ? "Actualizar" : "Reclamar"}
+                        </button>
+                        {teamAlias && (
+                           <button onClick={() => { setEstaEditandoAlias(false); setNuevoAlias(''); }} className="bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded-r-lg sm:rounded-lg text-[13px] font-bold transition-all whitespace-nowrap border border-slate-600 border-l-0 sm:border-l">
+                              Cerrar
+                           </button>
+                        )}
+                     </div>
+                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-2 w-full sm:w-auto text-blue-100">
-                   <span className="font-medium text-[13px] opacity-80">Actuando en Equipo:</span>
-                   <code className="font-bold tracking-wide">{tenantId}</code>
-                </div>
-              )}
-              
-              {/* Opción para Administradores de convertirse en Colaboradores (Mini-Form) */}
-              {isAdmin && (
-                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto ml-auto">
-                  <span className="text-blue-200 text-[13px] opacity-80 self-start sm:self-center">Vinculación:</span>
-                  <div className="flex w-full sm:w-auto">
-                    <input type="text" placeholder="Código de equipo..." value={codigoIngresado} onChange={e => setCodigoIngresado(e.target.value)}
-                      className="w-full sm:w-36 px-3 py-1.5 bg-[#0f1d4a] border border-[#0f1d4a] text-white placeholder-blue-300/50 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none transition-all text-[13px] rounded-l-lg font-mono flex-1 min-w-[120px]" />
-                    <button onClick={handleVincular} className="bg-emerald-500 hover:bg-emerald-400 border border-emerald-500 text-white px-4 py-1.5 text-[13px] font-bold transition-colors whitespace-nowrap rounded-r-lg">
-                      Unirme
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto text-blue-100 mb-2 sm:mb-0">
+                   <span className="font-medium text-[13px] opacity-80">Equipo:</span>
+                   <span className="font-bold tracking-widest text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-md border border-emerald-400/20 text-[13px] shadow-inner uppercase" title={adminAlias || tenantId}>
+                      {adminAlias || tenantId}
+                   </span>
                 </div>
               )}
             </div>
@@ -153,8 +190,30 @@ const VotantesDB = () => {
         )}
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        {tabs.length > 1 && (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 pb-20">
+        {accessDenied && !isAdmin ? (
+            <div className="bg-white rounded-2xl shadow-lg border border-red-100 p-8 sm:p-12 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-500 max-w-2xl mx-auto mt-10">
+               <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                  <AlertTriangle className="w-10 h-10 text-red-500" />
+               </div>
+               <h2 className="text-2xl font-extrabold text-slate-800 mb-3">Acceso Suspendido</h2>
+               <p className="text-slate-600 font-medium max-w-md mb-8 leading-relaxed">
+                  El administrador principal ha modificado el código de acceso del equipo por seguridad. Necesitas la nueva clave para continuar trabajando.
+               </p>
+               
+               <div className="w-full max-w-sm flex flex-col sm:flex-row gap-3">
+                  <input type="text" placeholder="Nuevo Código de Equipo"
+                     value={codigoRevincular} onChange={e => setCodigoRevincular(e.target.value)}
+                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-400 font-mono text-center sm:text-left transition-all"
+                  />
+                  <button onClick={handleRecuperarAcceso} disabled={revinculando} className={`px-6 py-3 rounded-xl font-bold tracking-wide text-white transition-all shadow-md flex items-center justify-center whitespace-nowrap ${revinculando ? 'bg-slate-400 cursor-not-allowed shadow-none' : 'bg-red-500 hover:bg-red-600 hover:shadow-lg hover:-translate-y-0.5'}`}>
+                     {revinculando ? <RefreshCw className="w-5 h-5 animate-spin" /> : "Reconectar"}
+                  </button>
+               </div>
+            </div>
+        ) : (
+          <>
+            {tabs.length > 1 && (
           <div className="bg-white rounded-[12px] shadow-sm border border-slate-200 mb-8 p-1.5 flex flex-nowrap overflow-x-auto gap-1 w-full sm:w-fit max-w-full mx-auto">
             {tabs.map((tab, idx) => (
               <React.Fragment key={tab.id}>
@@ -231,6 +290,8 @@ const VotantesDB = () => {
               />
             )}
           </div>
+        )}
+          </>
         )}
       </div>
     </div>

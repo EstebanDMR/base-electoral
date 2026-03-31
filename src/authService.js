@@ -18,6 +18,8 @@ export const registerUser = async (email, password, role = 'admin', tenantId = n
   const uid = userCredential.user.uid;
 
   try {
+    let dynamicAccessToken = null;
+    
     // FIX MÁGICO: Firebase RTDB usa un WebSocket independiente de FirebaseAuth.
     // Aunque Auth ya diga que el usuario existe, el WebSocket de RTDB tarda unos 
     // milisegundos en enviar el nuevo token de sesión al backend.
@@ -30,20 +32,46 @@ export const registerUser = async (email, password, role = 'admin', tenantId = n
       if (!tenantId || tenantId.trim() === '') {
         throw new Error("Debes proporcionar un código de equipo válido.");
       }
-      const adminSnap = await get(ref(database, `user_roles/${tenantId.trim()}`));
+      
+      const rawCode = tenantId.trim().toLowerCase();
+      let targetAdminUid = rawCode;
+
+      // Guardaremos este rawCode como su llave de acceso temporal (Token)
+      dynamicAccessToken = rawCode;
+
+      // 2.a Validar si el código es un Alias (Ej. MiguelDurango -> migueldurango)
+      const aliasSnap = await get(ref(database, `team_aliases/${rawCode}`));
+      if (aliasSnap.exists()) {
+         targetAdminUid = aliasSnap.val().owner;
+      }
+
+      // 2.b Validar que el dueño real (o el UID directo) sea un administrador
+      const adminSnap = await get(ref(database, `user_roles/${targetAdminUid}`));
       if (!adminSnap.exists() || adminSnap.val().role !== 'admin') {
         throw new Error("El código proporcionado no es válido o no pertenece a una cuenta Administradora.");
       }
+      
+      // Asignar el UID del propietario como el tenantId real y definitivo
+      // eslint-disable-next-line
+      tenantId = targetAdminUid; 
     }
 
-    const finalTenantId = role === 'admin' ? uid : tenantId.trim();
+    const finalTenantId = role === 'admin' ? uid : tenantId;
 
-    // 3. Guardar el rol en Firebase RTDB
+    // 3. Guardar el rol y el Token de Acceso en Firebase RTDB
     try {
-      await set(ref(database, `user_roles/${uid}`), {
+      const payload = {
         role,
         tenantId: finalTenantId
-      });
+      };
+      
+      // Si el rol es colaborador, almacenará el token EXACTO que uso para entrar. 
+      // Las reglas de RTDB lo contrastarán en vivo contra el del admin.
+      if (role === 'colaborador' && dynamicAccessToken) {
+        payload.accessToken = dynamicAccessToken;
+      }
+
+      await set(ref(database, `user_roles/${uid}`), payload);
       console.log('Usuario registrado y perfil creado:', { uid, role, tenantId: finalTenantId });
     } catch (dbError) {
       console.error('Fallo al guardar rol localmente por WebSocket. Dependeremos del auto-provisionamiento futuro.', dbError);

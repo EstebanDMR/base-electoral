@@ -134,13 +134,15 @@ export const TablaVotantes = ({ lista, votantes, lideres, isAdmin, mostrarLider 
                     </span>
                   </td>
                   {isAdmin && (
-                    <td className="px-5 py-4 text-right whitespace-nowrap items-center flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => iniciarEdicion(votante)} className="p-2 text-[#1e3a8a] hover:bg-[#1e3a8a]/5 hover:scale-110 rounded-xl transition-all" title="Editar Votante">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => eliminar(votante.id)} className="p-2 text-red-500 hover:bg-red-50 hover:scale-110 rounded-xl transition-all" title="Eliminar Votante">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => iniciarEdicion(votante)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Editar Votante">
+                          <Pencil className="w-[18px] h-[18px]" />
+                        </button>
+                        <button onClick={() => eliminar(votante.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Eliminar Votante">
+                          <Trash2 className="w-[18px] h-[18px]" />
+                        </button>
+                      </div>
                     </td>
                   )}
                 </>

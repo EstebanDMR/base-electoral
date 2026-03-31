@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ref, onValue, push, set, update, remove } from 'firebase/database';
+import { ref, onValue, push, set, update, remove, get } from 'firebase/database';
 import { database } from '../firebase';
 import { observeAuthState } from '../authService';
 
@@ -11,7 +11,11 @@ export const useVotantesData = () => {
   // Jerarquía Multi-Tenant
   const [isAdmin, setIsAdmin] = useState(false);
   const [tenantId, setTenantId] = useState(null);
+  const [accessToken, setAccessToken] = useState(null);
+  const [teamAlias, setTeamAlias] = useState(null);
+  const [adminAlias, setAdminAlias] = useState(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   // 1. Observar Auth
   useEffect(() => {
@@ -36,11 +40,15 @@ export const useVotantesData = () => {
          const data = snap.val();
          setIsAdmin(data.role === 'admin');
          setTenantId(data.tenantId);
+         setTeamAlias(data.teamAlias || null);
+         setAccessToken(data.accessToken || null);
+         
+         if (data.role === 'colaborador') {
+            setAdminAlias(data.accessToken || data.tenantId);
+         } else {
+            setAdminAlias(data.teamAlias || data.tenantId);
+         }
       }
-      // NOTA CRÍTICA: NO AUTO-PROVISIONAR ABSOLUTAMENTE NADA AQUÍ.
-      // Si la cuenta no tiene rol (porque recién se está creando o porque falló),
-      // dejamos que el flujo lo resuelva. Cualquier escritura aquí causa
-      // colisión con el registro de authService.js y !data.exists()
     }, (error) => {
       console.error("Error leyendo rol:", error);
     });
@@ -54,10 +62,12 @@ export const useVotantesData = () => {
       setVotantes([]);
       setLideres([]);
       setIsLoadingData(false);
+      setAccessDenied(false);
       return;
     }
 
     setIsLoadingData(true);
+    setAccessDenied(false);
     const votantesRef = ref(database, `usuarios/${tenantId}/votantes`);
     const lideresRef = ref(database, `usuarios/${tenantId}/lideres`);
 
@@ -69,21 +79,31 @@ export const useVotantesData = () => {
     };
 
     const unsubV = onValue(votantesRef, snap => {
+      setAccessDenied(false);
       const d = snap.val();
       setVotantes(d ? Object.keys(d).map(k => ({ id: k, ...d[k] })) : []);
+      loadedV = true;
+      checkLoaded();
+    }, (error) => {
+      if (error.code === 'PERMISSION_DENIED') setAccessDenied(true);
       loadedV = true;
       checkLoaded();
     });
     
     const unsubL = onValue(lideresRef, snap => {
+      setAccessDenied(false);
       const d = snap.val();
       setLideres(d ? Object.keys(d).map(k => ({ id: k, ...d[k] })) : []);
+      loadedL = true;
+      checkLoaded();
+    }, (error) => {
+      if (error.code === 'PERMISSION_DENIED') setAccessDenied(true);
       loadedL = true;
       checkLoaded();
     });
 
     return () => { unsubV(); unsubL(); };
-  }, [tenantId, firebaseUser]);
+  }, [tenantId, firebaseUser, accessToken]);
 
 
   // --- MÉTODOS DE BASE DE DATOS CENTRALIZADOS --- //
@@ -155,6 +175,69 @@ export const useVotantesData = () => {
     await remove(ref(database, `${getBasePath('lideres')}/${id}`));
   };
 
+  const vincularAEquipo = async (codigoInput) => {
+    const rawCode = codigoInput.trim().toLowerCase();
+    if (!rawCode) throw new Error("Código vacío");
+
+    let targetAdminUid = rawCode;
+
+    // Buscar si es un alias
+    const aliasSnap = await get(ref(database, `team_aliases/${rawCode}`));
+    if (aliasSnap.exists()) {
+        targetAdminUid = aliasSnap.val().owner;
+    }
+
+    // Verificar destino
+    const adminSnap = await get(ref(database, `user_roles/${targetAdminUid}`));
+    if (!adminSnap.exists() || adminSnap.val().role !== 'admin') {
+        throw new Error("El código de equipo no es válido o no pertenece a un Administrador.");
+    }
+
+    // Guardar
+    await update(ref(database, `user_roles/${firebaseUser.uid}`), {
+        role: 'colaborador',
+        tenantId: targetAdminUid,
+        accessToken: rawCode
+    });
+  };
+
+  const crearAliasEquipo = async (aliasRaw) => {
+    if (!isAdmin) throw new Error("Solo los administradores pueden crear códigos de equipo.");
+    
+    // Solo letras y numeros, sin espacios
+    const validAliasRegex = /^[a-zA-Z0-9]+$/;
+    if (!validAliasRegex.test(aliasRaw)) {
+        throw new Error("El código del equipo solo puede contener letras y números, sin espacios ni caracteres especiales.");
+    }
+
+    const aliasLimpiado = aliasRaw.trim().toLowerCase();
+
+    // Comprobar si existe
+    const aliasRef = ref(database, `team_aliases/${aliasLimpiado}`);
+    const snap = await get(aliasRef);
+    if (snap.exists()) {
+        throw new Error("Ese código de equipo ya está en uso. Por favor, elige otro distinto.");
+    }
+
+    try {
+        const payload = {
+            [`team_aliases/${aliasLimpiado}/owner`]: firebaseUser.uid,
+            [`team_aliases/${aliasLimpiado}/createdAt`]: new Date().toISOString(),
+            [`user_roles/${firebaseUser.uid}/teamAlias`]: aliasLimpiado
+        };
+        
+        // Si el admin ya tenía un alias y lo está re-escribiendo (rotando llave), liberamos el viejo
+        if (teamAlias) {
+            payload[`team_aliases/${teamAlias}`] = null;
+        }
+
+        await update(ref(database), payload);
+        setTeamAlias(aliasLimpiado);
+    } catch (e) {
+        throw new Error("Hubo un error al registrar el código. Informa a soporte o revisa la red.");
+    }
+  };
+
   return { 
     votantes, 
     lideres, 
@@ -162,6 +245,9 @@ export const useVotantesData = () => {
     isLoadingData,
     isAdmin,
     tenantId,
+    teamAlias,
+    adminAlias,
+    accessDenied,
     agregarVotante,
     editarVotante,
     eliminarVotante,
@@ -169,6 +255,8 @@ export const useVotantesData = () => {
     toggleYaVoto,
     agregarLider,
     editarLider,
-    eliminarLider
+    eliminarLider,
+    vincularAEquipo,
+    crearAliasEquipo
   };
 };
