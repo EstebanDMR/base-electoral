@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { UserPlus, Download, Trash2, CheckCircle2, AlertCircle, Users, CheckSquare, Clock } from 'lucide-react';
 import { exportarAExcel } from '../utils/exportarVotantes';
 import { TablaVotantes } from '../components/TablaVotantes';
+import { useTheme } from '../ThemeContext';
 
 export const VotantesView = ({
   votantes,
@@ -20,10 +21,11 @@ export const VotantesView = ({
   const [mensajeExito, setMensajeExito] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const { darkMode: d } = useTheme();
 
   const eliminarTodosLosVotantes = async () => {
-    if (window.confirm('⚠️ ¿Estás seguro de que deseas ELIMINAR TODA LA LISTA DE VOTANTES? Esta acción no se puede deshacer.')) {
-      if (window.confirm('⛔ ÚLTIMA CONFIRMACIÓN: Se eliminarán todos los votantes permanentemente. ¿Continuar?')) {
+    if (window.confirm('¿Estás seguro de que deseas ELIMINAR TODA LA LISTA DE VOTANTES? Esta acción no se puede deshacer.')) {
+      if (window.confirm('ÚLTIMA CONFIRMACIÓN: Se eliminarán todos los votantes permanentemente. ¿Continuar?')) {
         await onEliminarTodosLosVotantes();
       }
     }
@@ -46,9 +48,10 @@ export const VotantesView = ({
     }
   };
 
-  const inputClass = "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[12px] focus:bg-white focus:ring-4 focus:ring-[#1e3a8a]/10 focus:border-[#1e3a8a] transition-all outline-none text-slate-800 placeholder-slate-400 text-sm font-medium";
+  const inputClass = d
+    ? "w-full px-4 py-3 bg-[#0f172a] border border-slate-600 rounded-[12px] focus:bg-[#0f172a] focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none text-white placeholder-slate-500 text-sm font-medium"
+    : "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[12px] focus:bg-white focus:ring-4 focus:ring-[#1e3a8a]/10 focus:border-[#1e3a8a] transition-all outline-none text-slate-800 placeholder-slate-400 text-sm font-medium";
 
-  // Cálculos para KPIs
   const { total, votaron, faltan } = useMemo(() => {
     const t = votantes.length;
     const v = votantes.filter(x => x.yaVoto).length;
@@ -61,12 +64,12 @@ export const VotantesView = ({
       {/* Cabecera Principal y KPIs */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
          <div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Panel de Control</h2>
-            <p className="text-slate-500 font-medium mt-1">Visión general y gestión de tu base de datos electoral.</p>
+            <h2 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${d ? 'text-white' : 'text-slate-900'}`}>Panel de Control</h2>
+            <p className={`font-medium mt-1 ${d ? 'text-slate-400' : 'text-slate-500'}`}>Visión general y gestión de tu base de datos electoral.</p>
          </div>
          <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <button onClick={() => exportarAExcel(votantes, lideres)}
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-xl transition-all shadow-sm font-bold text-sm">
+              className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 border rounded-xl transition-all shadow-sm font-bold text-sm ${d ? 'bg-[#1e293b] text-slate-300 hover:bg-slate-700 border-slate-600' : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'}`}>
               <Download className="w-4 h-4" /> Exportar
             </button>
             <button onClick={() => setShowForm(!showForm)}
@@ -76,11 +79,11 @@ export const VotantesView = ({
          </div>
       </div>
 
-      {/* Tarjetas KPI (Dashboard) */}
+      {/* Tarjetas KPI */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
         
-        {/* Tarjeta 1: Total Votantes */}
-        <div className="bg-gradient-to-br from-white to-[#f4f7fa] px-6 py-5 rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-white flex items-center justify-between transition-transform animate-in fade-in duration-500 hover:scale-[1.02] cursor-default relative overflow-hidden">
+        {/* Total Votantes */}
+        <div className={`px-6 py-5 rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border flex items-center justify-between transition-transform animate-in fade-in duration-500 hover:scale-[1.02] cursor-default relative overflow-hidden ${d ? 'bg-[#1e293b] border-slate-700' : 'bg-gradient-to-br from-white to-[#f4f7fa] border-white'}`}>
           <div className="flex items-center gap-5">
              <div className="relative">
                <div className="absolute inset-0 bg-[#3b82f6] blur-xl opacity-40 translate-y-2 rounded-full scale-110"></div>
@@ -89,8 +92,8 @@ export const VotantesView = ({
                </div>
              </div>
              <div className="flex flex-col">
-               <p className="text-slate-500 font-extrabold tracking-widest uppercase text-[10px] mb-0.5 opacity-80">Total Votantes</p>
-               <h3 className="text-3xl font-black text-slate-800 leading-none">{total}</h3>
+               <p className={`font-extrabold tracking-widest uppercase text-[10px] mb-0.5 opacity-80 ${d ? 'text-slate-400' : 'text-slate-500'}`}>Total Votantes</p>
+               <h3 className={`text-3xl font-black leading-none ${d ? 'text-white' : 'text-slate-800'}`}>{total}</h3>
              </div>
           </div>
           <div className="w-20 h-10 ml-2 relative opacity-80">
@@ -106,8 +109,8 @@ export const VotantesView = ({
           </div>
         </div>
 
-        {/* Tarjeta 2: Ya Votaron */}
-        <div className="bg-gradient-to-br from-white to-[#f0fdf4] px-6 py-5 rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-white flex items-center justify-between transition-transform animate-in fade-in duration-500 hover:scale-[1.02] cursor-default relative overflow-hidden">
+        {/* Ya Votaron */}
+        <div className={`px-6 py-5 rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border flex items-center justify-between transition-transform animate-in fade-in duration-500 hover:scale-[1.02] cursor-default relative overflow-hidden ${d ? 'bg-[#1e293b] border-slate-700' : 'bg-gradient-to-br from-white to-[#f0fdf4] border-white'}`}>
           <div className="flex items-center gap-5">
              <div className="relative">
                <div className="absolute inset-0 bg-[#10b981] blur-xl opacity-40 translate-y-2 rounded-full scale-110"></div>
@@ -116,8 +119,7 @@ export const VotantesView = ({
                </div>
              </div>
              <div className="flex flex-col">
-               <p className="text-slate-500 font-extrabold tracking-widest uppercase text-[10px] mb-0.5 opacity-80">Ya Votaron</p>
-               {/* Numero en fuente destacada */}
+               <p className={`font-extrabold tracking-widest uppercase text-[10px] mb-0.5 opacity-80 ${d ? 'text-slate-400' : 'text-slate-500'}`}>Ya Votaron</p>
                <h3 className="text-3xl font-black text-[#059669] leading-none">{votaron}</h3>
              </div>
           </div>
@@ -129,8 +131,8 @@ export const VotantesView = ({
           </div>
         </div>
 
-        {/* Tarjeta 3: Faltan por Votar */}
-        <div className="bg-gradient-to-br from-white to-[#fffbeb] px-6 py-5 rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-white flex items-center justify-between transition-transform animate-in fade-in duration-500 hover:scale-[1.02] cursor-default relative overflow-hidden">
+        {/* Faltan por Votar */}
+        <div className={`px-6 py-5 rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border flex items-center justify-between transition-transform animate-in fade-in duration-500 hover:scale-[1.02] cursor-default relative overflow-hidden ${d ? 'bg-[#1e293b] border-slate-700' : 'bg-gradient-to-br from-white to-[#fffbeb] border-white'}`}>
           <div className="flex items-center gap-5">
              <div className="relative">
                <div className="absolute inset-0 bg-[#f59e0b] blur-xl opacity-40 translate-y-2 rounded-full scale-110"></div>
@@ -139,7 +141,7 @@ export const VotantesView = ({
                </div>
              </div>
              <div className="flex flex-col">
-               <p className="text-slate-500 font-extrabold tracking-widest uppercase text-[10px] mb-0.5 opacity-80">Faltan por Votar</p>
+               <p className={`font-extrabold tracking-widest uppercase text-[10px] mb-0.5 opacity-80 ${d ? 'text-slate-400' : 'text-slate-500'}`}>Faltan por Votar</p>
                <h3 className="text-3xl font-black text-[#d97706] leading-none">{faltan}</h3>
              </div>
           </div>
@@ -154,7 +156,7 @@ export const VotantesView = ({
 
       {/* Banners de Notificación */}
       {mensajeError && (
-        <div className="bg-red-50 border border-red-100 text-red-800 px-5 py-4 rounded-[16px] flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+        <div className={`border px-5 py-4 rounded-[16px] flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 ${d ? 'bg-red-900/20 border-red-900/30 text-red-400' : 'bg-red-50 border-red-100 text-red-800'}`}>
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500" />
             <span className="font-bold text-sm tracking-wide">{mensajeError}</span>
@@ -164,7 +166,7 @@ export const VotantesView = ({
       )}
 
       {mensajeExito && (
-        <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 px-5 py-4 rounded-[16px] flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+        <div className={`border px-5 py-4 rounded-[16px] flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 ${d ? 'bg-emerald-900/20 border-emerald-900/30 text-emerald-400' : 'bg-emerald-50 border-emerald-100 text-emerald-800'}`}>
           <div className="flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-500" />
             <span className="font-bold text-sm tracking-wide">{mensajeExito}</span>
@@ -175,9 +177,9 @@ export const VotantesView = ({
 
       {/* Formulario de Registro */}
       {showForm && (
-        <div className="bg-white rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-slate-100 p-6 sm:p-8 animate-in slide-in-from-top-4 fade-in duration-300">
-          <h2 className="text-lg font-extrabold text-slate-900 mb-6 flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-[#1e3a8a]" />
+        <div className={`rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border p-6 sm:p-8 animate-in slide-in-from-top-4 fade-in duration-300 ${d ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-slate-100'}`}>
+          <h2 className={`text-lg font-extrabold mb-6 flex items-center gap-2 ${d ? 'text-white' : 'text-slate-900'}`}>
+            <UserPlus className={`w-5 h-5 ${d ? 'text-blue-400' : 'text-[#1e3a8a]'}`} />
             Formulario de Ingreso
           </h2>
           
@@ -191,8 +193,8 @@ export const VotantesView = ({
             <input type="text" placeholder="Mesa de votación" value={nuevoVotante.mesa} onChange={(e) => setNuevoVotante({...nuevoVotante, mesa: e.target.value})} className={inputClass} />
             <input type="text" placeholder="Puesto de votación" value={nuevoVotante.puesto} onChange={(e) => setNuevoVotante({...nuevoVotante, puesto: e.target.value})} className={inputClass} />
             <select value={nuevoVotante.liderAsignado} onChange={(e) => setNuevoVotante({...nuevoVotante, liderAsignado: e.target.value})} className={inputClass}>
-              <option value="" className="text-slate-400">Seleccionar líder...</option>
-              {lideres.map(l => <option key={l.id} value={l.id} className="text-slate-800">{l.nombre}</option>)}
+              <option value="">Seleccionar líder...</option>
+              {lideres.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
             </select>
           </div>
           
@@ -210,9 +212,9 @@ export const VotantesView = ({
       )}
 
       {/* Contenedor de Tabla */}
-      <div className="bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/50 overflow-hidden mt-8">
-        <div className="px-6 py-5 border-b border-slate-100 bg-white flex items-center justify-between">
-            <h3 className="font-extrabold text-slate-900 text-lg">Listado General</h3>
+      <div className={`rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border overflow-hidden mt-8 ${d ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-slate-100/50'}`}>
+        <div className={`px-6 py-5 border-b flex items-center justify-between ${d ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-slate-100'}`}>
+            <h3 className={`font-extrabold text-lg ${d ? 'text-white' : 'text-slate-900'}`}>Listado General</h3>
             <button onClick={eliminarTodosLosVotantes} className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
                <Trash2 className="w-3.5 h-3.5" /> Vaciar Todo
             </button>
