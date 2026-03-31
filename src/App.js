@@ -138,11 +138,11 @@ const VotantesDB = () => {
               {/* Opción para Administradores de convertirse en Colaboradores (Mini-Form) */}
               {isAdmin && (
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto ml-auto">
-                  <span className="text-blue-200 text-[13px] opacity-80">Invitar a otro equipo...</span>
+                  <span className="text-blue-200 text-[13px] opacity-80 self-start sm:self-center">Vinculación:</span>
                   <div className="flex w-full sm:w-auto">
-                    <input type="text" placeholder="Código" value={codigoIngresado} onChange={e => setCodigoIngresado(e.target.value)}
-                      className="w-full sm:w-32 px-3 py-1.5 bg-[#0f1d4a] border border-[#0f1d4a] text-white placeholder-blue-300/50 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none transition-all text-[13px] rounded-l-lg font-mono hidden sm:block" />
-                    <button onClick={handleVincular} className="bg-emerald-500 hover:bg-emerald-400 border border-emerald-500 text-white px-4 py-1.5 text-[13px] font-bold transition-colors whitespace-nowrap rounded-lg sm:rounded-l-none">
+                    <input type="text" placeholder="Código de equipo..." value={codigoIngresado} onChange={e => setCodigoIngresado(e.target.value)}
+                      className="w-full sm:w-36 px-3 py-1.5 bg-[#0f1d4a] border border-[#0f1d4a] text-white placeholder-blue-300/50 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none transition-all text-[13px] rounded-l-lg font-mono flex-1 min-w-[120px]" />
+                    <button onClick={handleVincular} className="bg-emerald-500 hover:bg-emerald-400 border border-emerald-500 text-white px-4 py-1.5 text-[13px] font-bold transition-colors whitespace-nowrap rounded-r-lg">
                       Unirme
                     </button>
                   </div>
@@ -155,7 +155,7 @@ const VotantesDB = () => {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         {tabs.length > 1 && (
-          <div className="bg-white rounded-[12px] shadow-sm border border-slate-200 mb-8 p-1.5 flex flex-nowrap overflow-x-auto gap-1 w-fit mx-auto">
+          <div className="bg-white rounded-[12px] shadow-sm border border-slate-200 mb-8 p-1.5 flex flex-nowrap overflow-x-auto gap-1 w-full sm:w-fit max-w-full mx-auto">
             {tabs.map((tab, idx) => (
               <React.Fragment key={tab.id}>
                 {idx !== 0 && <div className="w-px bg-slate-200 my-2 mx-1 hidden sm:block"></div>}
