@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ref, onValue, push, set, update, remove, get } from 'firebase/database';
+import { ref, onValue, push, set, update, remove } from 'firebase/database';
 import { database } from '../firebase';
 import { observeAuthState } from '../authService';
 

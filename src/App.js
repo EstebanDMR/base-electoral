@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, LayoutDashboard, Search, FileBarChart2, KeySquare, Copy, CheckCircle2, Shield } from 'lucide-react';
+import { Users, LayoutDashboard, Search, FileBarChart2, Copy, CheckCircle2, Shield } from 'lucide-react';
 import { logoutUser } from './authService';
 import { useVotantesData } from './hooks/useVotantesData';
 import { Login } from './components/Login';
