@@ -1,0 +1,6 @@
+
+E:\EDveloper\Antigravity\base-electoral\src\App.js
+  108:10  error  'isLoadingData' is not defined  no-undef
+
+✖ 1 problem (1 error, 0 warnings)
+

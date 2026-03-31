@@ -1,112 +1,230 @@
-import React, { useState } from 'react';
-import { UserPlus } from 'lucide-react';
-import { ref, push, set, remove } from 'firebase/database';
-import { database } from '../firebase';
+import React, { useState, useMemo } from 'react';
+import { UserPlus, Download, Trash2, CheckCircle2, AlertCircle, Users, CheckSquare, Clock } from 'lucide-react';
 import { exportarAExcel } from '../utils/exportarVotantes';
 import { TablaVotantes } from '../components/TablaVotantes';
 
 export const VotantesView = ({
   votantes,
   lideres,
-  isAdmin
+  isAdmin,
+  onAgregarVotante,
+  onEliminarTodosLosVotantes,
+  onEditarVotante,
+  onEliminarVotante
 }) => {
   const [nuevoVotante, setNuevoVotante] = useState({
     nombreCompleto: '', documento: '', telefono: '', direccion: '',
     barrio: '', municipio: '', mesa: '', puesto: '', liderAsignado: ''
   });
   const [mensajeError, setMensajeError] = useState(null);
+  const [mensajeExito, setMensajeExito] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   const eliminarTodosLosVotantes = async () => {
     if (window.confirm('⚠️ ¿Estás seguro de que deseas ELIMINAR TODA LA LISTA DE VOTANTES? Esta acción no se puede deshacer.')) {
       if (window.confirm('⛔ ÚLTIMA CONFIRMACIÓN: Se eliminarán todos los votantes permanentemente. ¿Continuar?')) {
-        await remove(ref(database, 'votantes'));
+        await onEliminarTodosLosVotantes();
       }
     }
   };
 
   const agregarVotante = async () => {
     setMensajeError(null);
-    if (!nuevoVotante.nombreCompleto || !nuevoVotante.documento) { 
-      setMensajeError('Nombre y documento son obligatorios'); 
-      return; 
+    setMensajeExito(null);
+    setIsSaving(true);
+    try {
+      await onAgregarVotante(nuevoVotante);
+      setNuevoVotante({ nombreCompleto: '', documento: '', telefono: '', direccion: '', barrio: '', municipio: '', mesa: '', puesto: '', liderAsignado: '' });
+      setMensajeExito('Votante registrado exitosamente.');
+      setShowForm(false);
+      setTimeout(() => setMensajeExito(null), 3000);
+    } catch (error) {
+      setMensajeError(error.message);
+    } finally {
+      setIsSaving(false);
     }
-    const dup = votantes.find(v => v.documento === nuevoVotante.documento);
-    if (dup) { 
-      setMensajeError(`Esta cédula ya está registrada a nombre de: ${dup.nombreCompleto}`); 
-      return; 
-    }
-    await set(push(ref(database, 'votantes')), { ...nuevoVotante, yaVoto: false, fechaRegistro: new Date().toISOString() });
-    setNuevoVotante({ nombreCompleto: '', documento: '', telefono: '', direccion: '', barrio: '', municipio: '', mesa: '', puesto: '', liderAsignado: '' });
   };
 
+  const inputClass = "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[12px] focus:bg-white focus:ring-4 focus:ring-[#1e3a8a]/10 focus:border-[#1e3a8a] transition-all outline-none text-slate-800 placeholder-slate-400 text-sm font-medium";
+
+  // Cálculos para KPIs
+  const { total, votaron, faltan } = useMemo(() => {
+    const t = votantes.length;
+    const v = votantes.filter(x => x.yaVoto).length;
+    return { total: t, votaron: v, faltan: t - v };
+  }, [votantes]);
+
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-bold text-gray-800">Lista Completa de Votantes</h2>
-          <div className="flex flex-wrap gap-2">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      
+      {/* Cabecera Principal y KPIs */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
+         <div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Panel de Control</h2>
+            <p className="text-slate-500 font-medium mt-1">Visión general y gestión de tu base de datos electoral.</p>
+         </div>
+         <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <button onClick={() => exportarAExcel(votantes, lideres)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm">
-              📊 Exportar a Excel
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-xl transition-all shadow-sm font-bold text-sm">
+              <Download className="w-4 h-4" /> Exportar
             </button>
-            <button onClick={eliminarTodosLosVotantes}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-sm">
-              🗑️ Eliminar toda la lista
+            <button onClick={() => setShowForm(!showForm)}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1e3a8a] text-white hover:bg-[#152a6b] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 border border-transparent rounded-xl transition-all font-bold text-sm">
+              <UserPlus className="w-4 h-4" /> {showForm ? 'Ocultar Formulario' : '+ Nuevo Votante'}
             </button>
+         </div>
+      </div>
+
+      {/* Tarjetas KPI (Dashboard) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
+        
+        {/* Tarjeta 1: Total Votantes */}
+        <div className="bg-gradient-to-br from-white to-[#f4f7fa] px-6 py-5 rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-white flex items-center justify-between transition-transform animate-in fade-in duration-500 hover:scale-[1.02] cursor-default relative overflow-hidden">
+          <div className="flex items-center gap-5">
+             <div className="relative">
+               <div className="absolute inset-0 bg-[#3b82f6] blur-xl opacity-40 translate-y-2 rounded-full scale-110"></div>
+               <div className="bg-gradient-to-br from-[#60a5fa] to-[#2563eb] w-14 h-14 flex flex-col justify-center items-center rounded-full relative z-10 shadow-sm">
+                  <Users className="w-7 h-7 text-white" />
+               </div>
+             </div>
+             <div className="flex flex-col">
+               <p className="text-slate-500 font-extrabold tracking-widest uppercase text-[10px] mb-0.5 opacity-80">Total Votantes</p>
+               <h3 className="text-3xl font-black text-slate-800 leading-none">{total}</h3>
+             </div>
+          </div>
+          <div className="w-20 h-10 ml-2 relative opacity-80">
+             <svg viewBox="0 0 100 40" className="w-full h-full overflow-visible drop-shadow-sm">
+               <path d="M0,30 Q10,10 25,25 T50,20 T75,35 L100,5" fill="none" stroke="url(#blue-grad)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+               <defs>
+                 <linearGradient id="blue-grad" x1="0" y1="0" x2="100" y2="0" gradientUnits="userSpaceOnUse">
+                   <stop offset="0%" stopColor="#93c5fd" />
+                   <stop offset="100%" stopColor="#3b82f6" />
+                 </linearGradient>
+               </defs>
+             </svg>
+          </div>
+        </div>
+
+        {/* Tarjeta 2: Ya Votaron */}
+        <div className="bg-gradient-to-br from-white to-[#f0fdf4] px-6 py-5 rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-white flex items-center justify-between transition-transform animate-in fade-in duration-500 hover:scale-[1.02] cursor-default relative overflow-hidden">
+          <div className="flex items-center gap-5">
+             <div className="relative">
+               <div className="absolute inset-0 bg-[#10b981] blur-xl opacity-40 translate-y-2 rounded-full scale-110"></div>
+               <div className="bg-gradient-to-br from-[#34d399] to-[#059669] w-14 h-14 flex flex-col justify-center items-center rounded-full relative z-10 shadow-sm">
+                  <CheckSquare className="w-7 h-7 text-white relative -mt-0.5" />
+               </div>
+             </div>
+             <div className="flex flex-col">
+               <p className="text-slate-500 font-extrabold tracking-widest uppercase text-[10px] mb-0.5 opacity-80">Ya Votaron</p>
+               {/* Numero en fuente destacada */}
+               <h3 className="text-3xl font-black text-[#059669] leading-none">{votaron}</h3>
+             </div>
+          </div>
+          <div className="w-12 h-12 ml-2 relative">
+             <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90 drop-shadow-sm">
+               <path className="text-[#34d399]/20" strokeWidth="4.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+               <path className="text-[#059669]" strokeDasharray={`${Math.max(0.1, (votaron / (total || 1)) * 100)}, 100`} strokeWidth="4.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+             </svg>
+          </div>
+        </div>
+
+        {/* Tarjeta 3: Faltan por Votar */}
+        <div className="bg-gradient-to-br from-white to-[#fffbeb] px-6 py-5 rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-white flex items-center justify-between transition-transform animate-in fade-in duration-500 hover:scale-[1.02] cursor-default relative overflow-hidden">
+          <div className="flex items-center gap-5">
+             <div className="relative">
+               <div className="absolute inset-0 bg-[#f59e0b] blur-xl opacity-40 translate-y-2 rounded-full scale-110"></div>
+               <div className="bg-gradient-to-br from-[#fbbf24] to-[#d97706] w-14 h-14 flex flex-col justify-center items-center rounded-full relative z-10 shadow-sm">
+                  <Clock className="w-7 h-7 text-white" />
+               </div>
+             </div>
+             <div className="flex flex-col">
+               <p className="text-slate-500 font-extrabold tracking-widest uppercase text-[10px] mb-0.5 opacity-80">Faltan por Votar</p>
+               <h3 className="text-3xl font-black text-[#d97706] leading-none">{faltan}</h3>
+             </div>
+          </div>
+          <div className="w-12 h-12 ml-2 relative">
+             <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90 drop-shadow-sm">
+               <path className="text-[#fbbf24]/20" strokeWidth="4.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+               <path className="text-[#d97706]" strokeDasharray={`${Math.max(0.1, (faltan / (total || 1)) * 100)}, 100`} strokeWidth="4.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+             </svg>
           </div>
         </div>
       </div>
 
+      {/* Banners de Notificación */}
       {mensajeError && (
-        <div className="bg-red-100 border-2 border-red-500 text-red-800 px-4 py-3 rounded-lg flex items-center justify-between">
+        <div className="bg-red-50 border border-red-100 text-red-800 px-5 py-4 rounded-[16px] flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-3">
-            <span className="text-xl">⛔</span>
-            <span className="font-semibold text-sm">{mensajeError}</span>
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <span className="font-bold text-sm tracking-wide">{mensajeError}</span>
           </div>
-          <button onClick={() => setMensajeError(null)} className="text-red-600 hover:text-red-800 font-bold text-xl ml-2">✕</button>
+          <button onClick={() => setMensajeError(null)} className="text-red-400 hover:text-red-600 transition-colors p-1">✕</button>
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <UserPlus className="w-6 h-6 text-indigo-600" />
-          Registrar Nuevo Votante
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {[
-            { key: 'nombreCompleto', ph: 'Nombre completo *' },
-            { key: 'documento',      ph: 'Documento (cédula) *' },
-            { key: 'telefono',       ph: 'Teléfono' },
-            { key: 'direccion',      ph: 'Dirección' },
-            { key: 'barrio',         ph: 'Barrio' },
-            { key: 'municipio',      ph: 'Municipio' },
-            { key: 'mesa',           ph: 'Mesa de votación' },
-            { key: 'puesto',         ph: 'Puesto de votación' },
-          ].map(f => (
-            <input key={f.key} type="text" placeholder={f.ph} value={nuevoVotante[f.key]}
-              onChange={(e) => setNuevoVotante({...nuevoVotante, [f.key]: e.target.value})}
-              className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none" />
-          ))}
-          <select value={nuevoVotante.liderAsignado}
-            onChange={(e) => setNuevoVotante({...nuevoVotante, liderAsignado: e.target.value})}
-            className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none">
-            <option value="">Seleccionar líder</option>
-            {lideres.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
-          </select>
+      {mensajeExito && (
+        <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 px-5 py-4 rounded-[16px] flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+            <span className="font-bold text-sm tracking-wide">{mensajeExito}</span>
+          </div>
+          <button onClick={() => setMensajeExito(null)} className="text-emerald-400 hover:text-emerald-600 transition-colors p-1">✕</button>
         </div>
-        <button onClick={agregarVotante}
-          className="mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold w-full">
-          ✓ Registrar Votante
-        </button>
-      </div>
+      )}
 
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      {/* Formulario de Registro */}
+      {showForm && (
+        <div className="bg-white rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-slate-100 p-6 sm:p-8 animate-in slide-in-from-top-4 fade-in duration-300">
+          <h2 className="text-lg font-extrabold text-slate-900 mb-6 flex items-center gap-2">
+            <UserPlus className="w-5 h-5 text-[#1e3a8a]" />
+            Formulario de Ingreso
+          </h2>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+            <input type="text" placeholder="Nombre completo *" value={nuevoVotante.nombreCompleto} onChange={(e) => setNuevoVotante({...nuevoVotante, nombreCompleto: e.target.value})} className={inputClass} />
+            <input type="text" placeholder="Documento (cédula) *" value={nuevoVotante.documento} onChange={(e) => setNuevoVotante({...nuevoVotante, documento: e.target.value})} className={inputClass} />
+            <input type="text" placeholder="Teléfono" value={nuevoVotante.telefono} onChange={(e) => setNuevoVotante({...nuevoVotante, telefono: e.target.value})} className={inputClass} />
+            <input type="text" placeholder="Dirección" value={nuevoVotante.direccion} onChange={(e) => setNuevoVotante({...nuevoVotante, direccion: e.target.value})} className={inputClass} />
+            <input type="text" placeholder="Barrio" value={nuevoVotante.barrio} onChange={(e) => setNuevoVotante({...nuevoVotante, barrio: e.target.value})} className={inputClass} />
+            <input type="text" placeholder="Municipio" value={nuevoVotante.municipio} onChange={(e) => setNuevoVotante({...nuevoVotante, municipio: e.target.value})} className={inputClass} />
+            <input type="text" placeholder="Mesa de votación" value={nuevoVotante.mesa} onChange={(e) => setNuevoVotante({...nuevoVotante, mesa: e.target.value})} className={inputClass} />
+            <input type="text" placeholder="Puesto de votación" value={nuevoVotante.puesto} onChange={(e) => setNuevoVotante({...nuevoVotante, puesto: e.target.value})} className={inputClass} />
+            <select value={nuevoVotante.liderAsignado} onChange={(e) => setNuevoVotante({...nuevoVotante, liderAsignado: e.target.value})} className={inputClass}>
+              <option value="" className="text-slate-400">Seleccionar líder...</option>
+              {lideres.map(l => <option key={l.id} value={l.id} className="text-slate-800">{l.nombre}</option>)}
+            </select>
+          </div>
+          
+          <div className="mt-8 flex justify-end">
+            <button onClick={agregarVotante} disabled={isSaving}
+              className={`px-8 py-4 text-white rounded-xl font-bold tracking-wide transition-all duration-200 shadow-sm flex items-center gap-2 ${isSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#1e3a8a] hover:bg-[#152a6b] hover:shadow-lg hover:-translate-y-0.5'}`}>
+              {isSaving ? (
+                <><span className="animate-spin h-5 w-5 border-2 border-white/20 border-t-white rounded-full"></span> Procesando...</>
+              ) : (
+                <><CheckCircle2 className="w-5 h-5" /> Guardar Votante</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Contenedor de Tabla */}
+      <div className="bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/50 overflow-hidden mt-8">
+        <div className="px-6 py-5 border-b border-slate-100 bg-white flex items-center justify-between">
+            <h3 className="font-extrabold text-slate-900 text-lg">Listado General</h3>
+            <button onClick={eliminarTodosLosVotantes} className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
+               <Trash2 className="w-3.5 h-3.5" /> Vaciar Todo
+            </button>
+        </div>
         <TablaVotantes 
           lista={votantes} 
           votantes={votantes} 
           lideres={lideres} 
           isAdmin={isAdmin} 
           mostrarLider={true} 
+          onEditarVotante={onEditarVotante}
+          onEliminarVotante={onEliminarVotante}
         />
       </div>
     </div>
