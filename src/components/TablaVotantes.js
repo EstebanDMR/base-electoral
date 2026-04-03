@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Pencil, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from 'lucide-react';
 import { useTheme } from '../ThemeContext';
 
 export const TablaVotantes = ({ lista, votantes, lideres, isAdmin, mostrarLider = true, onEditarVotante, onEliminarVotante }) => {
@@ -7,7 +7,14 @@ export const TablaVotantes = ({ lista, votantes, lideres, isAdmin, mostrarLider 
   const [datosEdicion, setDatosEdicion] = useState(null);
   const [mensajeErrorLocal, setMensajeErrorLocal] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [filtroGeneral, setFiltroGeneral] = useState('');
+  const [itemsPorPagina, setItemsPorPagina] = useState(10);
   const { darkMode: d } = useTheme();
+
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [filtroGeneral, itemsPorPagina]);
 
   const iniciarEdicion = (v) => { 
     setEditandoVotante(v.id); 
@@ -60,8 +67,45 @@ export const TablaVotantes = ({ lista, votantes, lideres, isAdmin, mostrarLider 
     );
   }
 
+  const quitarTildes = (str) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+  const busquedaNormalizada = quitarTildes(filtroGeneral.toLowerCase());
+  
+  const listaFiltrada = filtroGeneral.trim() === '' ? lista : lista.filter(v => 
+    quitarTildes(v.nombreCompleto.toLowerCase()).includes(busquedaNormalizada) || v.documento.includes(filtroGeneral)
+  );
+
+  const totalPaginas = Math.ceil(listaFiltrada.length / itemsPorPagina);
+  const startIndex = (paginaActual - 1) * itemsPorPagina;
+  const endIndex = startIndex + itemsPorPagina;
+  const listaPaginada = listaFiltrada.slice(startIndex, endIndex);
+
   return (
     <div className="overflow-x-auto">
+      <div className={`px-5 py-4 border-b flex flex-col sm:flex-row items-center justify-between gap-4 ${d ? 'border-slate-700/50' : 'border-slate-100/50'}`}>
+        <div className="relative w-full sm:w-72">
+          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${d ? 'text-slate-500' : 'text-slate-400'}`} />
+          <input
+            type="text"
+            placeholder="Buscar votante en esta lista..."
+            value={filtroGeneral}
+            onChange={(e) => setFiltroGeneral(e.target.value)}
+            className={`w-full pl-9 pr-4 py-2 text-sm rounded-xl outline-none transition-all ${d ? 'bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:border-blue-500' : 'bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:bg-white'}`}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-sm font-medium ${d ? 'text-slate-400' : 'text-slate-500'}`}>Mostrar:</span>
+          <select
+            value={itemsPorPagina}
+            onChange={(e) => setItemsPorPagina(Number(e.target.value))}
+            className={`text-sm py-1.5 px-2 rounded-lg outline-none cursor-pointer border font-bold ${d ? 'bg-slate-800 border-slate-700 text-white focus:border-slate-500' : 'bg-white border-slate-200 text-slate-700 focus:border-slate-300'}`}
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+        </div>
+      </div>
       {mensajeErrorLocal && (
         <div className={`mx-4 my-3 border px-4 py-3 rounded-xl flex items-center justify-between shadow-sm ${d ? 'bg-red-900/20 border-red-900/30 text-red-400' : 'bg-red-50 border-red-100 text-red-700'}`}>
           <span className="font-medium text-sm">{mensajeErrorLocal}</span>
@@ -76,12 +120,13 @@ export const TablaVotantes = ({ lista, votantes, lideres, isAdmin, mostrarLider 
             <th className={`px-5 py-4 text-[11px] uppercase tracking-widest font-extrabold whitespace-nowrap ${d ? 'text-slate-400' : 'text-slate-500'}`}>Teléfono</th>
             {mostrarLider && <th className={`px-5 py-4 text-[11px] uppercase tracking-widest font-extrabold whitespace-nowrap ${d ? 'text-slate-400' : 'text-slate-500'}`}>Líder Asignado</th>}
             <th className={`px-5 py-4 text-[11px] uppercase tracking-widest font-extrabold whitespace-nowrap ${d ? 'text-slate-400' : 'text-slate-500'}`}>Puesto</th>
+            <th className={`px-5 py-4 text-[11px] uppercase tracking-widest font-extrabold whitespace-nowrap ${d ? 'text-slate-400' : 'text-slate-500'}`}>Mesa</th>
             <th className={`px-5 py-4 text-[11px] uppercase tracking-widest font-extrabold whitespace-nowrap ${d ? 'text-slate-400' : 'text-slate-500'}`}>Estado</th>
             {isAdmin && <th className={`px-5 py-4 text-[11px] uppercase tracking-widest font-extrabold whitespace-nowrap text-right ${d ? 'text-slate-400' : 'text-slate-500'}`}>Acciones</th>}
           </tr>
         </thead>
         <tbody className={`divide-y ${d ? 'divide-slate-700/50' : 'divide-slate-100/50'}`}>
-          {lista.map(votante => (
+          {listaPaginada.map(votante => (
             <tr key={votante.id} className={`transition-colors group ${d ? 'hover:bg-slate-700/30' : 'hover:bg-slate-50/50'}`}>
               {editandoVotante === votante.id ? (
                 <>
@@ -106,9 +151,17 @@ export const TablaVotantes = ({ lista, votantes, lideres, isAdmin, mostrarLider 
                     <input type="text" value={datosEdicion.puesto} onChange={(e) => setDatosEdicion({...datosEdicion, puesto: e.target.value})} className={editInputClass} />
                   </td>
                   <td className="px-5 py-3">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wide ${votante.yaVoto ? 'bg-emerald-500/10 text-emerald-700' : (d ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500')}`}>
-                      {votante.yaVoto ? 'Ya Votó' : 'Pendiente'}
-                    </span>
+                    <input type="text" value={datosEdicion.mesa} onChange={(e) => setDatosEdicion({...datosEdicion, mesa: e.target.value})} className={editInputClass} />
+                  </td>
+                  <td className="px-5 py-3">
+                    <select
+                      value={datosEdicion.yaVoto ? 'true' : 'false'}
+                      onChange={(e) => setDatosEdicion({...datosEdicion, yaVoto: e.target.value === 'true'})}
+                      className={editInputClass}
+                    >
+                      <option value="false">Pendiente</option>
+                      <option value="true">Ya Votó</option>
+                    </select>
                   </td>
                   {isAdmin && (
                     <td className="px-5 py-3 w-[180px]">
@@ -134,6 +187,7 @@ export const TablaVotantes = ({ lista, votantes, lideres, isAdmin, mostrarLider 
                     </td>
                   )}
                   <td className={`px-5 py-4 text-sm whitespace-nowrap truncate max-w-[150px] font-medium ${d ? 'text-slate-400' : 'text-slate-600'}`} title={votante.puesto}>{votante.puesto || '-'}</td>
+                  <td className={`px-5 py-4 text-sm whitespace-nowrap font-medium ${d ? 'text-slate-400' : 'text-slate-600'}`}>{votante.mesa || '-'}</td>
                   <td className="px-5 py-4 whitespace-nowrap border-l border-transparent">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-extrabold tracking-wide uppercase leading-none shadow-sm border ${
                       votante.yaVoto 
@@ -161,6 +215,50 @@ export const TablaVotantes = ({ lista, votantes, lideres, isAdmin, mostrarLider 
           ))}
         </tbody>
       </table>
+      {totalPaginas > 1 && (
+        <div className={`px-5 py-4 border-t flex items-center justify-between ${d ? 'border-slate-700/50' : 'border-slate-100/50'}`}>
+          <span className={`text-sm font-medium hidden sm:block ${d ? 'text-slate-400' : 'text-slate-500'}`}>
+            Mostrando {listaFiltrada.length === 0 ? 0 : startIndex + 1} a {Math.min(endIndex, listaFiltrada.length)} de {listaFiltrada.length} votantes filtrados
+          </span>
+          <div className="flex gap-1 sm:gap-2 mx-auto sm:mx-0">
+            <button
+              onClick={() => setPaginaActual(p => Math.max(1, p - 10))}
+              disabled={paginaActual === 1}
+              className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${paginaActual === 1 ? 'opacity-50 cursor-not-allowed' : (d ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-100 hover:text-slate-900')} ${d ? 'text-slate-400 bg-slate-800' : 'text-slate-600 bg-white border border-slate-200'}`}
+              title="Retroceder 10 páginas"
+            >
+              <ChevronsLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+              disabled={paginaActual === 1}
+              className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${paginaActual === 1 ? 'opacity-50 cursor-not-allowed' : (d ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-100 hover:text-slate-900')} ${d ? 'text-slate-400 bg-slate-800' : 'text-slate-600 bg-white border border-slate-200'}`}
+              title="Página anterior"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className={`flex items-center px-3 rounded-lg text-sm font-bold ${d ? 'bg-slate-800 text-slate-300' : 'bg-slate-50 text-slate-700 border border-slate-200'}`}>
+              Página {paginaActual} de {totalPaginas}
+            </div>
+            <button
+              onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+              disabled={paginaActual === totalPaginas}
+              className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${paginaActual === totalPaginas ? 'opacity-50 cursor-not-allowed' : (d ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-100 hover:text-slate-900')} ${d ? 'text-slate-400 bg-slate-800' : 'text-slate-600 bg-white border border-slate-200'}`}
+              title="Página siguiente"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 10))}
+              disabled={paginaActual === totalPaginas}
+              className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${paginaActual === totalPaginas ? 'opacity-50 cursor-not-allowed' : (d ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-100 hover:text-slate-900')} ${d ? 'text-slate-400 bg-slate-800' : 'text-slate-600 bg-white border border-slate-200'}`}
+              title="Avanzar 10 páginas"
+            >
+              <ChevronsRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

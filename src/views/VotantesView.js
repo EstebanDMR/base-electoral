@@ -11,7 +11,8 @@ export const VotantesView = ({
   onAgregarVotante,
   onEliminarTodosLosVotantes,
   onEditarVotante,
-  onEliminarVotante
+  onEliminarVotante,
+  onGenerarPrueba
 }) => {
   const [nuevoVotante, setNuevoVotante] = useState({
     nombreCompleto: '', documento: '', telefono: '', direccion: '',
@@ -27,6 +28,21 @@ export const VotantesView = ({
     if (window.confirm('¿Estás seguro de que deseas ELIMINAR TODA LA LISTA DE VOTANTES? Esta acción no se puede deshacer.')) {
       if (window.confirm('ÚLTIMA CONFIRMACIÓN: Se eliminarán todos los votantes permanentemente. ¿Continuar?')) {
         await onEliminarTodosLosVotantes();
+      }
+    }
+  };
+
+  const manejarGenerarPrueba = async () => {
+    if (window.confirm('Se van a generar 1000 votantes de prueba. ¿Continuar?')) {
+      setIsSaving(true);
+      try {
+        await onGenerarPrueba();
+        setMensajeExito('1000 votantes de prueba generados.');
+        setTimeout(() => setMensajeExito(null), 3000);
+      } catch (error) {
+        setMensajeError(error.message);
+      } finally {
+        setIsSaving(false);
       }
     }
   };
@@ -215,9 +231,14 @@ export const VotantesView = ({
       <div className={`rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border overflow-hidden mt-8 ${d ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-slate-100/50'}`}>
         <div className={`px-6 py-5 border-b flex items-center justify-between ${d ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-slate-100'}`}>
           <h3 className={`font-extrabold text-lg ${d ? 'text-white' : 'text-slate-900'}`}>Listado General</h3>
-          <button onClick={eliminarTodosLosVotantes} className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
-            <Trash2 className="w-3.5 h-3.5" /> Vaciar Todo
-          </button>
+          <div className="flex gap-2">
+            <button onClick={manejarGenerarPrueba} className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border ${d ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}>
+              <Users className="w-3.5 h-3.5" /> Generar 1000 de Prueba
+            </button>
+            <button onClick={eliminarTodosLosVotantes} className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
+              <Trash2 className="w-3.5 h-3.5" /> Vaciar Todo
+            </button>
+          </div>
         </div>
         <TablaVotantes
           lista={votantes}

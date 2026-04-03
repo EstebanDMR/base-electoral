@@ -152,6 +152,49 @@ export const useVotantesData = () => {
     await remove(ref(database, getBasePath('votantes')));
   };
 
+  const generarVotantesDePrueba = async () => {
+    validarPermisoAdmin();
+    const basePath = getBasePath('votantes');
+    const payload = {};
+    
+    const nombres = ['Andrés', 'Juan', 'Carlos', 'Diego', 'Alejandro', 'Felipe', 'Santiago', 'David', 'Camilo', 'José', 'María', 'Ana', 'Laura', 'Valentina', 'Isabella', 'Daniela', 'Camila', 'Sofía', 'Mariana', 'Natalia', 'Miguel', 'Luis', 'Pedro', 'Pablo', 'Mateo', 'Sebastián', 'Samuel', 'Nicolás', 'Martín', 'Gabriel'];
+    const apellidos = ['García', 'Martínez', 'Rodríguez', 'López', 'Hernández', 'Pérez', 'González', 'Gómez', 'Sánchez', 'Díaz', 'Ramírez', 'Álvarez', 'Fernández', 'Torres', 'Suárez', 'Jiménez', 'Ruiz', 'Castro', 'Vargas', 'Rojas', 'Osorio', 'Ríos', 'Morales', 'Herrera', 'Muñoz', 'Cárdenas', 'Gutiérrez', 'Navarro', 'Quintero', 'Rendón'];
+    const puestos = ['Fátima', 'San Juan Bosco', 'Simón Bolívar', 'Santa Rita', 'San José'];
+    const liderIds = lideres.map(l => l.id);
+
+    for (let i = 0; i < 1000; i++) {
+        const key = push(ref(database, basePath)).key;
+        
+        const nombreAleatorio = nombres[Math.floor(Math.random() * nombres.length)];
+        const apellido1 = apellidos[Math.floor(Math.random() * apellidos.length)];
+        let apellido2 = apellidos[Math.floor(Math.random() * apellidos.length)];
+        if (apellido1 === apellido2) {
+            apellido2 = apellidos[(apellidos.indexOf(apellido2) + 1) % apellidos.length];
+        }
+        
+        const telefono = '3' + Math.floor(Math.random() * 900000000 + 100000000).toString();
+        const documento = (1000000000 + i).toString();
+        const puesto = puestos[Math.floor(Math.random() * puestos.length)];
+        const mesa = String(Math.floor(Math.random() * 10) + 1);
+        const lider = liderIds.length > 0 ? liderIds[Math.floor(Math.random() * liderIds.length)] : '';
+
+        payload[`${basePath}/${key}`] = {
+            nombreCompleto: `${nombreAleatorio} ${apellido1} ${apellido2}`,
+            documento: documento,
+            telefono: telefono,
+            direccion: `Calle ${Math.floor(Math.random() * 100 + 1)} #${Math.floor(Math.random() * 100 + 1)}-${Math.floor(Math.random() * 100 + 1)}`,
+            barrio: 'Centro',
+            municipio: 'Ciudad',
+            mesa: mesa,
+            puesto: puesto,
+            liderAsignado: lider,
+            yaVoto: Math.random() > 0.5,
+            fechaRegistro: new Date().toISOString()
+        };
+    }
+    await update(ref(database), payload);
+  };
+
   const toggleYaVoto = async (id, estadoActual) => {
     // Both Admin and Colaborador can update the yaVoto status
     await update(ref(database, `${getBasePath('votantes')}/${id}`), { yaVoto: !estadoActual });
@@ -257,6 +300,7 @@ export const useVotantesData = () => {
     editarLider,
     eliminarLider,
     vincularAEquipo,
-    crearAliasEquipo
+    crearAliasEquipo,
+    generarVotantesDePrueba
   };
 };

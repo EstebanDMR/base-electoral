@@ -38,7 +38,8 @@ const VotantesDB = () => {
     teamAlias,
     adminAlias,
     accessDenied,
-    crearAliasEquipo
+    crearAliasEquipo,
+    generarVotantesDePrueba
   } = useVotantesData();
 
   // Cargar el tema del usuario cuando cambia la sesión
@@ -89,8 +90,11 @@ const VotantesDB = () => {
     toggleYaVoto(votante.id, votante.yaVoto);
   };
 
+  const quitarTildes = (str) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+  const busquedaNormalizada = quitarTildes(busqueda.toLowerCase());
+
   const votantesBusqueda = busqueda.trim() === '' ? [] : votantes.filter(v =>
-    v.nombreCompleto.toLowerCase().includes(busqueda.toLowerCase()) || v.documento.includes(busqueda)
+    quitarTildes(v.nombreCompleto.toLowerCase()).includes(busquedaNormalizada) || v.documento.includes(busqueda)
   );
 
   const tabs = [
@@ -278,6 +282,7 @@ const VotantesDB = () => {
                     onEditarVotante={editarVotante}
                     onEliminarVotante={eliminarVotante}
                     onEliminarTodosLosVotantes={eliminarTodosLosVotantes}
+                    onGenerarPrueba={generarVotantesDePrueba}
                   />
                 )}
 
