@@ -77,7 +77,7 @@ export const BusquedaView = ({
           ) : (
             <div className="flex flex-col gap-5">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {votantesBusqueda.slice(0, 30).map(votante => {
+                {votantesBusqueda.slice(0, 15).map(votante => {
                   const liderNombre = lideres.find(l => l.id === votante.liderAsignado)?.nombre || 'Sin Líder';
                   return (
                     <div key={votante.id} className={`rounded-[24px] shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] border p-6 transition-all relative overflow-hidden group ${d ? 'bg-[#1e293b] border-slate-700 hover:shadow-lg' : 'bg-white border-slate-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)]'}`}>
@@ -115,10 +115,10 @@ export const BusquedaView = ({
                 })}
               </div>
               
-              {votantesBusqueda.length > 30 && (
+              {votantesBusqueda.length > 15 && (
                 <div className={`w-full text-center py-4 rounded-[16px] border ${d ? 'bg-[#1e293b]/50 border-slate-700 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
                   <p className="font-bold text-sm">
-                    Mostrando 30 de {votantesBusqueda.length} resultados. Usa un término más específico.
+                    Mostrando 15 de {votantesBusqueda.length} resultados. Usa un término más específico.
                   </p>
                 </div>
               )}
