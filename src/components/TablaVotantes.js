@@ -53,6 +53,33 @@ export const TablaVotantes = ({ lista, votantes, lideres, isAdmin, mostrarLider 
     ? "w-full px-3 py-2 bg-[#0f172a] border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm outline-none transition-all font-medium text-white"
     : "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#1e3a8a]/20 focus:border-[#1e3a8a] text-sm outline-none transition-all font-medium";
 
+  const quitarTildes = (str) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
+  
+  const listaProcesada = React.useMemo(() => {
+    return (lista || []).map(v => ({
+      ...v,
+      stringBusqueda: quitarTildes(v.nombreCompleto) + " " + (v.documento || "")
+    }));
+  }, [lista]);
+
+  const listaFiltrada = React.useMemo(() => {
+    if (filtroGeneral.trim() === '') return listaProcesada;
+    const busquedaNormalizada = quitarTildes(filtroGeneral);
+    return listaProcesada.filter(v => v.stringBusqueda.includes(busquedaNormalizada));
+  }, [listaProcesada, filtroGeneral]);
+
+  const { listaPaginada, totalPaginas, startIndex, endIndex } = React.useMemo(() => {
+    const total = Math.ceil(listaFiltrada.length / itemsPorPagina) || 1;
+    const start = (paginaActual - 1) * itemsPorPagina;
+    const end = start + itemsPorPagina;
+    return {
+      listaPaginada: listaFiltrada.slice(start, end),
+      totalPaginas: total,
+      startIndex: start,
+      endIndex: end
+    };
+  }, [listaFiltrada, paginaActual, itemsPorPagina]);
+
   if (!lista || lista.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center">
@@ -67,17 +94,7 @@ export const TablaVotantes = ({ lista, votantes, lideres, isAdmin, mostrarLider 
     );
   }
 
-  const quitarTildes = (str) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
-  const busquedaNormalizada = quitarTildes(filtroGeneral.toLowerCase());
-  
-  const listaFiltrada = filtroGeneral.trim() === '' ? lista : lista.filter(v => 
-    quitarTildes(v.nombreCompleto.toLowerCase()).includes(busquedaNormalizada) || v.documento.includes(filtroGeneral)
-  );
 
-  const totalPaginas = Math.ceil(listaFiltrada.length / itemsPorPagina);
-  const startIndex = (paginaActual - 1) * itemsPorPagina;
-  const endIndex = startIndex + itemsPorPagina;
-  const listaPaginada = listaFiltrada.slice(startIndex, endIndex);
 
   return (
     <div className="overflow-x-auto">

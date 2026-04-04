@@ -47,6 +47,21 @@ const VotantesDB = () => {
     loadUserTheme(firebaseUser?.email || null);
   }, [firebaseUser, loadUserTheme]);
 
+  const quitarTildes = (str) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
+
+  const votantesProcesados = React.useMemo(() => {
+    return (votantes || []).map(v => ({
+      ...v,
+      stringBusqueda: quitarTildes(v.nombreCompleto) + " " + (v.documento || "")
+    }));
+  }, [votantes]);
+
+  const votantesBusqueda = React.useMemo(() => {
+    if (busqueda.trim() === '') return [];
+    const busquedaNormalizada = quitarTildes(busqueda);
+    return votantesProcesados.filter(v => v.stringBusqueda.includes(busquedaNormalizada));
+  }, [busqueda, votantesProcesados]);
+
   if (!firebaseUser) return <Login />;
 
   const handleLogout = async () => {
@@ -90,12 +105,7 @@ const VotantesDB = () => {
     toggleYaVoto(votante.id, votante.yaVoto);
   };
 
-  const quitarTildes = (str) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
-  const busquedaNormalizada = quitarTildes(busqueda.toLowerCase());
 
-  const votantesBusqueda = busqueda.trim() === '' ? [] : votantes.filter(v =>
-    quitarTildes(v.nombreCompleto.toLowerCase()).includes(busquedaNormalizada) || v.documento.includes(busqueda)
-  );
 
   const tabs = [
     { id: 'busqueda', icon: <Search className="w-4 h-4" />, label: 'Búsqueda' },
