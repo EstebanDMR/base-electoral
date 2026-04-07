@@ -1,4 +1,4 @@
-# 🗳️ Base Electoral SaaS
+# Base Electoral SaaS
 
 > Sistema SaaS multiusuario diseñado para gestionar votantes a gran escala, optimizando el rendimiento mediante procesamiento en servidor.
 
@@ -6,7 +6,7 @@
 
 ---
 
-## 📌 Resumen del Proyecto
+## Resumen del Proyecto
 
 * Sistema SaaS multiusuario para gestión de votantes y equipos.
 * Optimizado para manejar miles de registros sin degradación.
@@ -15,13 +15,13 @@
 
 ---
 
-## 🎥 Demo
+## Demo
 
-![Demo](./demo.gif)
+![Demo](./Demo.gif)
 
 ---
 
-## 📖 El Origen del Proyecto
+## El Origen del Proyecto
 
 El desarrollo comenzó como una solución rápida para organizar la base de un equipo electoral. La primera versión cumplió su cometido de manera básica: descargaba todos los datos de Firebase en una sola petición al iniciar la aplicación, y React manejaba localmente los filtros y la paginación.
 
@@ -35,7 +35,7 @@ Esto funcionaba a una escala muy pequeña, pero al superar los 1000 registros, l
 
 ---
 
-## ⚠️ El Problema: El Cuello de Botella en el Cliente
+## El Problema: El Cuello de Botella en el Cliente
 
 Delegar el procesamiento de grandes volúmenes de datos al cliente deja de ser viable rápidamente a medida que crecen los registros. Al descargar miles de nodos en bloque:
 
@@ -47,7 +47,7 @@ Esto no solo afectaba la experiencia de usuario, sino también el consumo de rec
 
 ---
 
-## 🛠️ La Solución y Evolución Técnica
+## La Solución y Evolución Técnica
 
 Al identificar el límite, el sistema fue refactorizado para delegar el procesamiento al servidor.
 
@@ -69,7 +69,7 @@ Se aplicaron los siguientes cambios clave:
 
 ---
 
-## 🏗️ Arquitectura Estructural
+## Arquitectura Estructural
 
 Se implementó una separación clara de responsabilidades para mejorar mantenibilidad y escalabilidad:
 
@@ -85,7 +85,7 @@ Esta estructura permite escalar, testear y reemplazar tecnologías sin afectar l
 
 ---
 
-## 🧠 Decisiones Técnicas Clave
+## Decisiones Técnicas Clave
 
 * **Desacoplamiento de servicios (DAL)**
   La lógica de acceso a datos se separa completamente de la UI.
@@ -98,7 +98,7 @@ Esta estructura permite escalar, testear y reemplazar tecnologías sin afectar l
 
 ---
 
-## 📊 Impacto en Performance
+## Impacto en Performance
 
 | Métrica Crítica         | v1.0 (Client-Side) | v2.0 (Server Query) |
 | ----------------------- | ------------------ | ------------------- |
@@ -108,7 +108,7 @@ Esta estructura permite escalar, testear y reemplazar tecnologías sin afectar l
 
 ---
 
-## ⚖️ Trade-offs Operativos
+## Trade-offs Operativos
 
 * **Realtime Database vs Firestore**
   Se priorizó Realtime DB por su bajo costo y velocidad en tiempo real, sacrificando capacidades avanzadas de consulta.
@@ -118,7 +118,7 @@ Esta estructura permite escalar, testear y reemplazar tecnologías sin afectar l
 
 ---
 
-## 🔒 Seguridad
+## Seguridad
 
 * Autenticación con Firebase Authentication
 * Control de acceso por roles
@@ -126,14 +126,14 @@ Esta estructura permite escalar, testear y reemplazar tecnologías sin afectar l
 
 ---
 
-## 🚀 Próximas Implementaciones
+## Próximas Implementaciones
 
 * Enrutamiento protegido con middleware (React Router)
 * Soporte offline (Service Workers)
 
 ---
 
-## 🎯 ¿Qué demuestra este proyecto?
+## ¿Qué demuestra este proyecto?
 
 * Diseño de sistemas escalables en frontend
 * Optimización de rendimiento con grandes volúmenes de datos
@@ -143,6 +143,6 @@ Esta estructura permite escalar, testear y reemplazar tecnologías sin afectar l
 
 ---
 
-## 👨‍💻 Autor
+## Autor
 
 **EstebanDMR** | Full Stack Developer
