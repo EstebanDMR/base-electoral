@@ -21,3 +21,12 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Logs de herramientas
+*.log
+
+# Artefactos de análisis local
+lint_out.txt
+eslint.txt
+lint.json
+eslint.json

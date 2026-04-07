@@ -1,7 +1,0 @@
-
-E:\EDveloper\Antigravity\base-electoral\src\App.js
-   28:5   warning  'toggleYaVoto' is assigned a value but never used  no-unused-vars
-  181:37  error    'handleToggleYaVoto' is not defined                no-undef
-
-✖ 2 problems (1 error, 1 warning)
-
