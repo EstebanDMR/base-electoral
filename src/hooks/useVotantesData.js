@@ -124,10 +124,7 @@ export const useVotantesData = () => {
     if (!isAdmin) throw new Error("Acción denegada: Solo los administradores pueden realizar alteraciones estructurales.");
   };
 
-  const getBasePath = (collection) => {
-    if (!tenantId) throw new Error("Acción denegada: No perteneces a un equipo (Tenant ID vacío).");
-    return `usuarios/${tenantId}/${collection}`;
-  };
+
 
   // --- Wrapper CRUD usando Service --- //
   
