@@ -10,7 +10,6 @@ import { EstadisticasView } from './views/EstadisticasView';
 import { useTheme } from './ThemeContext';
 
 const VotantesDB = () => {
-  const [busqueda, setBusqueda] = useState('');
   const [vistaActual, setVistaActual] = useState('busqueda');
   const [codigoCopiado, setCodigoCopiado] = useState(false);
   const [nuevoAlias, setNuevoAlias] = useState('');
@@ -26,6 +25,7 @@ const VotantesDB = () => {
     isLoadingData,
     isAdmin,
     tenantId,
+    paginacion,
     agregarVotante,
     editarVotante,
     eliminarVotante,
@@ -46,21 +46,6 @@ const VotantesDB = () => {
   useEffect(() => {
     loadUserTheme(firebaseUser?.email || null);
   }, [firebaseUser, loadUserTheme]);
-
-  const quitarTildes = (str) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
-
-  const votantesProcesados = React.useMemo(() => {
-    return (votantes || []).map(v => ({
-      ...v,
-      stringBusqueda: quitarTildes(v.nombreCompleto) + " " + (v.documento || "")
-    }));
-  }, [votantes]);
-
-  const votantesBusqueda = React.useMemo(() => {
-    if (busqueda.trim() === '') return [];
-    const busquedaNormalizada = quitarTildes(busqueda);
-    return votantesProcesados.filter(v => v.stringBusqueda.includes(busquedaNormalizada));
-  }, [busqueda, votantesProcesados]);
 
   if (!firebaseUser) return <Login />;
 
@@ -101,8 +86,8 @@ const VotantesDB = () => {
     }
   };
 
-  const handleToggleYaVoto = (votante) => {
-    toggleYaVoto(votante.id, votante.yaVoto);
+  const handleToggleYaVoto = (id, estadoActual) => {
+    toggleYaVoto(id, estadoActual);
   };
 
 
@@ -274,9 +259,7 @@ const VotantesDB = () => {
               <div className="animate-in fade-in duration-500">
                 {vistaActual === 'busqueda' && (
                   <BusquedaView
-                    busqueda={busqueda}
-                    setBusqueda={setBusqueda}
-                    votantesBusqueda={votantesBusqueda}
+                    tenantId={tenantId}
                     lideres={lideres}
                     isAdmin={isAdmin}
                     handleToggleYaVoto={handleToggleYaVoto}
@@ -286,6 +269,7 @@ const VotantesDB = () => {
                 {vistaActual === 'votantes' && isAdmin && (
                   <VotantesView
                     votantes={votantes}
+                    paginacion={paginacion}
                     lideres={lideres}
                     isAdmin={isAdmin}
                     onAgregarVotante={agregarVotante}

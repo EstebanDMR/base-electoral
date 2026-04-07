@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { ref, onValue, push, set, update, remove, get } from 'firebase/database';
+import { useState, useEffect, useCallback } from 'react';
+import { ref, onValue, get, update } from 'firebase/database';
 import { database } from '../firebase';
 import { observeAuthState } from '../authService';
+import { firebaseService } from '../services/firebaseService';
 
 export const useVotantesData = () => {
   const [votantes, setVotantes] = useState([]);
@@ -16,6 +17,10 @@ export const useVotantesData = () => {
   const [adminAlias, setAdminAlias] = useState(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
+
+  // Pagination
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // 1. Observar Auth
   useEffect(() => {
@@ -34,6 +39,7 @@ export const useVotantesData = () => {
       return;
     }
 
+    // Role realtime (necesario para detectar cambios de tenant o baneos)
     const roleRef = ref(database, `user_roles/${firebaseUser.uid}`);
     const unsubRole = onValue(roleRef, (snap) => {
       if (snap.exists()) {
@@ -56,7 +62,7 @@ export const useVotantesData = () => {
     return () => unsubRole();
   }, [firebaseUser]);
 
-  // 3. Cargar la base de datos del Tenant correspondiente
+  // 3. Cargar datos iniciales
   useEffect(() => {
     if (!tenantId) {
       setVotantes([]);
@@ -66,156 +72,115 @@ export const useVotantesData = () => {
       return;
     }
 
-    setIsLoadingData(true);
-    setAccessDenied(false);
-    const votantesRef = ref(database, `usuarios/${tenantId}/votantes`);
-    const lideresRef = ref(database, `usuarios/${tenantId}/lideres`);
-
-    let loadedV = false;
-    let loadedL = false;
-
-    const checkLoaded = () => {
-      if (loadedV && loadedL) setIsLoadingData(false);
+    const loadInitialData = async () => {
+        setIsLoadingData(true);
+        setAccessDenied(false);
+        try {
+            const [votantesIniciales, lideresIniciales] = await Promise.all([
+                firebaseService.fetchVotantesPaginados(tenantId, 20, null),
+                firebaseService.getLideres(tenantId)
+            ]);
+            setVotantes(votantesIniciales);
+            setLideres(lideresIniciales);
+            setHasMore(votantesIniciales.length === 20); // asumiendo pageSize 20
+        } catch (error) {
+            if (error.code === 'PERMISSION_DENIED' || error.message.includes('permission_denied')) {
+                setAccessDenied(true);
+            }
+            console.error(error);
+        } finally {
+            setIsLoadingData(false);
+        }
     };
-
-    const unsubV = onValue(votantesRef, snap => {
-      setAccessDenied(false);
-      const d = snap.val();
-      setVotantes(d ? Object.keys(d).map(k => ({ id: k, ...d[k] })) : []);
-      loadedV = true;
-      checkLoaded();
-    }, (error) => {
-      if (error.code === 'PERMISSION_DENIED') setAccessDenied(true);
-      loadedV = true;
-      checkLoaded();
-    });
     
-    const unsubL = onValue(lideresRef, snap => {
-      setAccessDenied(false);
-      const d = snap.val();
-      setLideres(d ? Object.keys(d).map(k => ({ id: k, ...d[k] })) : []);
-      loadedL = true;
-      checkLoaded();
-    }, (error) => {
-      if (error.code === 'PERMISSION_DENIED') setAccessDenied(true);
-      loadedL = true;
-      checkLoaded();
-    });
+    loadInitialData();
+  }, [tenantId, accessToken]);
 
-    return () => { unsubV(); unsubL(); };
-  }, [tenantId, firebaseUser, accessToken]);
+  const loadMoreVotantes = useCallback(async () => {
+    if (!tenantId || !hasMore || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+        const lastVotante = votantes[votantes.length - 1];
+        if (!lastVotante) return;
+        
+        // Obtenemos 20 adicionales, el primero podría solaparse dependiendo de la lógica de startAt
+        // Usamos lastVotante.nombre_normalizado
+        const nuevos = await firebaseService.fetchVotantesPaginados(tenantId, 21, lastVotante.nombre_normalizado);
+        
+        // Si hay solapamiento (el registro existe), lo evitamos
+        const filtrados = nuevos.filter(n => !votantes.find(v => v.id === n.id));
+        
+        setVotantes(prev => [...prev, ...filtrados]);
+        setHasMore(nuevos.length >= 21);
+    } catch (e) {
+        console.error("Error paginando:", e);
+    } finally {
+        setIsLoadingMore(false);
+    }
+  }, [tenantId, votantes, hasMore, isLoadingMore]);
 
-
-  // --- MÉTODOS DE BASE DE DATOS CENTRALIZADOS --- //
-  
-  const getBasePath = (collection) => {
-    if (!tenantId) throw new Error("Acción denegada: No perteneces a un equipo (Tenant ID vacío).");
-    return `usuarios/${tenantId}/${collection}`;
-  };
 
   const validarPermisoAdmin = () => {
     if (!isAdmin) throw new Error("Acción denegada: Solo los administradores pueden realizar alteraciones estructurales.");
   };
 
-  const validarVotante = (datos, idAExcluir = null) => {
-    if (!datos.nombreCompleto || String(datos.nombreCompleto).trim().length < 3) throw new Error("El nombre completo es obligatorio.");
-    if (!datos.documento || String(datos.documento).trim() === '') throw new Error("El documento es obligatorio.");
-    
-    const dup = votantes.find(v => v.documento === String(datos.documento).trim() && v.id !== idAExcluir);
-    if (dup) throw new Error(`Esta cédula ya está registrada a nombre de: ${dup.nombreCompleto}`);
+  const getBasePath = (collection) => {
+    if (!tenantId) throw new Error("Acción denegada: No perteneces a un equipo (Tenant ID vacío).");
+    return `usuarios/${tenantId}/${collection}`;
   };
 
-  const validarLider = (datos) => {
-    if (!datos.nombre || String(datos.nombre).trim().length < 3) throw new Error("El nombre del líder es obligatorio.");
-  };
-
-  // --- ACCIONES VOTANTES --- //
+  // --- Wrapper CRUD usando Service --- //
+  
   const agregarVotante = async (nuevoVotante) => {
     validarPermisoAdmin();
-    validarVotante(nuevoVotante);
-    await set(push(ref(database, getBasePath('votantes'))), { ...nuevoVotante, yaVoto: false, fechaRegistro: new Date().toISOString() });
+    // Reemplaza fetch completo con actualización local (Optimista)
+    await firebaseService.agregarVotante(tenantId, nuevoVotante);
+    // Para simplificar, re-cargamos la primera página
+    const recargados = await firebaseService.fetchVotantesPaginados(tenantId, 20);
+    setVotantes(recargados);
   };
 
   const editarVotante = async (id, datosEditados) => {
     validarPermisoAdmin();
-    validarVotante(datosEditados, id);
-    await update(ref(database, `${getBasePath('votantes')}/${id}`), datosEditados);
+    await firebaseService.editarVotante(tenantId, id, datosEditados);
+    setVotantes(prev => prev.map(v => v.id === id ? { ...v, ...datosEditados } : v));
   };
 
   const eliminarVotante = async (id) => {
     validarPermisoAdmin();
-    await remove(ref(database, `${getBasePath('votantes')}/${id}`));
+    await firebaseService.eliminarVotante(tenantId, id);
+    setVotantes(prev => prev.filter(v => v.id !== id));
   };
 
   const eliminarTodosLosVotantes = async () => {
     validarPermisoAdmin();
-    await remove(ref(database, getBasePath('votantes')));
-  };
-
-  const generarVotantesDePrueba = async () => {
-    validarPermisoAdmin();
-    const basePath = getBasePath('votantes');
-    const payload = {};
-    
-    const nombres = ['Andrés', 'Juan', 'Carlos', 'Diego', 'Alejandro', 'Felipe', 'Santiago', 'David', 'Camilo', 'José', 'María', 'Ana', 'Laura', 'Valentina', 'Isabella', 'Daniela', 'Camila', 'Sofía', 'Mariana', 'Natalia', 'Miguel', 'Luis', 'Pedro', 'Pablo', 'Mateo', 'Sebastián', 'Samuel', 'Nicolás', 'Martín', 'Gabriel'];
-    const apellidos = ['García', 'Martínez', 'Rodríguez', 'López', 'Hernández', 'Pérez', 'González', 'Gómez', 'Sánchez', 'Díaz', 'Ramírez', 'Álvarez', 'Fernández', 'Torres', 'Suárez', 'Jiménez', 'Ruiz', 'Castro', 'Vargas', 'Rojas', 'Osorio', 'Ríos', 'Morales', 'Herrera', 'Muñoz', 'Cárdenas', 'Gutiérrez', 'Navarro', 'Quintero', 'Rendón'];
-    const puestos = ['Fátima', 'San Juan Bosco', 'Simón Bolívar', 'Santa Rita', 'San José'];
-    const liderIds = lideres.map(l => l.id);
-
-    for (let i = 0; i < 1000; i++) {
-        const key = push(ref(database, basePath)).key;
-        
-        const nombreAleatorio = nombres[Math.floor(Math.random() * nombres.length)];
-        const apellido1 = apellidos[Math.floor(Math.random() * apellidos.length)];
-        let apellido2 = apellidos[Math.floor(Math.random() * apellidos.length)];
-        if (apellido1 === apellido2) {
-            apellido2 = apellidos[(apellidos.indexOf(apellido2) + 1) % apellidos.length];
-        }
-        
-        const telefono = '3' + Math.floor(Math.random() * 900000000 + 100000000).toString();
-        const documento = (1000000000 + i).toString();
-        const puesto = puestos[Math.floor(Math.random() * puestos.length)];
-        const mesa = String(Math.floor(Math.random() * 10) + 1);
-        const lider = liderIds.length > 0 ? liderIds[Math.floor(Math.random() * liderIds.length)] : '';
-
-        payload[`${basePath}/${key}`] = {
-            nombreCompleto: `${nombreAleatorio} ${apellido1} ${apellido2}`,
-            documento: documento,
-            telefono: telefono,
-            direccion: `Calle ${Math.floor(Math.random() * 100 + 1)} #${Math.floor(Math.random() * 100 + 1)}-${Math.floor(Math.random() * 100 + 1)}`,
-            barrio: 'Centro',
-            municipio: 'Ciudad',
-            mesa: mesa,
-            puesto: puesto,
-            liderAsignado: lider,
-            yaVoto: Math.random() > 0.5,
-            fechaRegistro: new Date().toISOString()
-        };
-    }
-    await update(ref(database), payload);
+    await firebaseService.eliminarTodosLosVotantes(tenantId);
+    setVotantes([]);
   };
 
   const toggleYaVoto = async (id, estadoActual) => {
-    // Both Admin and Colaborador can update the yaVoto status
-    await update(ref(database, `${getBasePath('votantes')}/${id}`), { yaVoto: !estadoActual });
+    await firebaseService.toggleYaVoto(tenantId, id, estadoActual);
+    setVotantes(prev => prev.map(v => v.id === id ? { ...v, yaVoto: !estadoActual } : v));
   };
 
-  // --- ACCIONES LÍDERES --- //
   const agregarLider = async (nuevoLider) => {
     validarPermisoAdmin();
-    validarLider(nuevoLider);
-    await set(push(ref(database, getBasePath('lideres'))), { ...nuevoLider, fechaRegistro: new Date().toISOString() });
+    await firebaseService.agregarLider(tenantId, nuevoLider);
+    const updLideres = await firebaseService.getLideres(tenantId);
+    setLideres(updLideres);
   };
 
   const editarLider = async (id, datosEditados) => {
     validarPermisoAdmin();
-    validarLider(datosEditados);
-    await update(ref(database, `${getBasePath('lideres')}/${id}`), datosEditados);
+    await firebaseService.editarLider(tenantId, id, datosEditados);
+    const updLideres = await firebaseService.getLideres(tenantId);
+    setLideres(updLideres);
   };
 
   const eliminarLider = async (id) => {
     validarPermisoAdmin();
-    await remove(ref(database, `${getBasePath('lideres')}/${id}`));
+    await firebaseService.eliminarLider(tenantId, id);
+    setLideres(prev => prev.filter(l => l.id !== id));
   };
 
   const vincularAEquipo = async (codigoInput) => {
@@ -223,20 +188,16 @@ export const useVotantesData = () => {
     if (!rawCode) throw new Error("Código vacío");
 
     let targetAdminUid = rawCode;
-
-    // Buscar si es un alias
     const aliasSnap = await get(ref(database, `team_aliases/${rawCode}`));
     if (aliasSnap.exists()) {
         targetAdminUid = aliasSnap.val().owner;
     }
 
-    // Verificar destino
     const adminSnap = await get(ref(database, `user_roles/${targetAdminUid}`));
     if (!adminSnap.exists() || adminSnap.val().role !== 'admin') {
-        throw new Error("El código de equipo no es válido o no pertenece a un Administrador.");
+        throw new Error("El código de equipo no es válido.");
     }
 
-    // Guardar
     await update(ref(database, `user_roles/${firebaseUser.uid}`), {
         role: 'colaborador',
         tenantId: targetAdminUid,
@@ -245,22 +206,13 @@ export const useVotantesData = () => {
   };
 
   const crearAliasEquipo = async (aliasRaw) => {
-    if (!isAdmin) throw new Error("Solo los administradores pueden crear códigos de equipo.");
-    
-    // Solo letras y numeros, sin espacios
+    if (!isAdmin) throw new Error("Acceso denegado.");
     const validAliasRegex = /^[a-zA-Z0-9]+$/;
-    if (!validAliasRegex.test(aliasRaw)) {
-        throw new Error("El código del equipo solo puede contener letras y números, sin espacios ni caracteres especiales.");
-    }
+    if (!validAliasRegex.test(aliasRaw)) throw new Error("Formato inválido.");
 
     const aliasLimpiado = aliasRaw.trim().toLowerCase();
-
-    // Comprobar si existe
-    const aliasRef = ref(database, `team_aliases/${aliasLimpiado}`);
-    const snap = await get(aliasRef);
-    if (snap.exists()) {
-        throw new Error("Ese código de equipo ya está en uso. Por favor, elige otro distinto.");
-    }
+    const snap = await get(ref(database, `team_aliases/${aliasLimpiado}`));
+    if (snap.exists()) throw new Error("Código en uso.");
 
     try {
         const payload = {
@@ -268,18 +220,21 @@ export const useVotantesData = () => {
             [`team_aliases/${aliasLimpiado}/createdAt`]: new Date().toISOString(),
             [`user_roles/${firebaseUser.uid}/teamAlias`]: aliasLimpiado
         };
-        
-        // Si el admin ya tenía un alias y lo está re-escribiendo (rotando llave), liberamos el viejo
-        if (teamAlias) {
-            payload[`team_aliases/${teamAlias}`] = null;
-        }
-
+        if (teamAlias) payload[`team_aliases/${teamAlias}`] = null;
         await update(ref(database), payload);
         setTeamAlias(aliasLimpiado);
     } catch (e) {
-        throw new Error("Hubo un error al registrar el código. Informa a soporte o revisa la red.");
+        throw new Error("Error registrando código.");
     }
   };
+
+  const generarVotantesDePrueba = async () => {
+    validarPermisoAdmin();
+    await firebaseService.generarVotantesDePrueba(tenantId, lideres);
+    // Recargar la primera página tras generar datos
+    const recargados = await firebaseService.fetchVotantesPaginados(tenantId, 20);
+    setVotantes(recargados);
+  }; 
 
   return { 
     votantes, 
@@ -291,6 +246,7 @@ export const useVotantesData = () => {
     teamAlias,
     adminAlias,
     accessDenied,
+    paginacion: { hasMore, isLoadingMore, loadMoreVotantes, setVotantes },
     agregarVotante,
     editarVotante,
     eliminarVotante,

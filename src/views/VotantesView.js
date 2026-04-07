@@ -6,6 +6,7 @@ import { useTheme } from '../ThemeContext';
 
 export const VotantesView = ({
   votantes,
+  paginacion,
   lideres,
   isAdmin,
   onAgregarVotante,
@@ -249,6 +250,19 @@ export const VotantesView = ({
           onEditarVotante={onEditarVotante}
           onEliminarVotante={onEliminarVotante}
         />
+        {paginacion?.hasMore && (
+          <div className="p-5 flex justify-center border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-b-[24px]">
+            <button
+              onClick={() => paginacion.loadMoreVotantes()}
+              disabled={paginacion.isLoadingMore}
+              className={`px-6 py-2.5 rounded-xl font-bold tracking-wide transition-all shadow-sm
+                ${paginacion.isLoadingMore ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60'}`
+              }
+            >
+              {paginacion.isLoadingMore ? 'Cargando nuevos registros...' : 'Cargar Más Votantes'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

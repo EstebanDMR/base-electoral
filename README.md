@@ -1,70 +1,148 @@
-# Getting Started with Create React App
+# 🗳️ Base Electoral SaaS
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+> Sistema SaaS multiusuario diseñado para gestionar votantes a gran escala, optimizando el rendimiento mediante procesamiento en servidor.
 
-## Available Scripts
+[Demo en vivo](https://base-electoral.vercel.app/) | [Repositorio](https://github.com/EstebanDMR/base-electoral)
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## 📌 Resumen del Proyecto
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+* Sistema SaaS multiusuario para gestión de votantes y equipos.
+* Optimizado para manejar miles de registros sin degradación.
+* Implementa paginación por cursores y consultas en servidor.
+* Arquitectura desacoplada (DAL + lógica de negocio + UI).
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## 🎥 Demo
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+![Demo](./demo.gif)
 
-### `npm run build`
+---
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 📖 El Origen del Proyecto
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+El desarrollo comenzó como una solución rápida para organizar la base de un equipo electoral. La primera versión cumplió su cometido de manera básica: descargaba todos los datos de Firebase en una sola petición al iniciar la aplicación, y React manejaba localmente los filtros y la paginación.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Esto funcionaba a una escala muy pequeña, pero al superar los 1000 registros, la falta de una arquitectura de datos evidenció sus fallas:
 
-### `npm run eject`
+* Lentitud extrema en la carga inicial.
+* Congelamientos en la UI al interactuar.
+* Consumo innecesario de memoria en los dispositivos de los usuarios.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+> Este punto marcó la transición de una solución funcional a un sistema diseñado para escalar.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+---
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## ⚠️ El Problema: El Cuello de Botella en el Cliente
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Delegar el procesamiento de grandes volúmenes de datos al cliente deja de ser viable rápidamente a medida que crecen los registros. Al descargar miles de nodos en bloque:
 
-## Learn More
+* Se congestionaba el *Main Thread* del navegador
+* El tiempo de carga inicial (TTV) aumentaba significativamente
+* Se transferían datos innecesarios al cliente
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Esto no solo afectaba la experiencia de usuario, sino también el consumo de recursos de red y costos operativos.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+---
 
-### Code Splitting
+## 🛠️ La Solución y Evolución Técnica
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Al identificar el límite, el sistema fue refactorizado para delegar el procesamiento al servidor.
 
-### Analyzing the Bundle Size
+Se aplicaron los siguientes cambios clave:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+* **Peticiones iterativas (`limitToFirst`)**
+  Solo se descargan los datos visibles en pantalla.
 
-### Making a Progressive Web App
+* **Paginación por cursores (`startAt`)**
+  Permite navegar eficientemente grandes volúmenes de datos sin depender de offsets.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+  > Nota: Se implementa control de duplicados en cliente debido a limitaciones del cursor en Realtime Database.
 
-### Advanced Configuration
+* **Debounce en búsquedas**
+  Se evita ejecutar múltiples consultas por cada tecla, esperando a que el usuario termine de escribir.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+* **Normalización de datos (`nombre_normalizado`)**
+  Se eliminan tildes y mayúsculas para permitir indexación eficiente en Firebase.
 
-### Deployment
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## 🏗️ Arquitectura Estructural
 
-### `npm run build` fails to minify
+Se implementó una separación clara de responsabilidades para mejorar mantenibilidad y escalabilidad:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```text
+├── src/
+│   ├── services/  # Data Access Layer (DAL)
+│   ├── hooks/     # Lógica de negocio
+│   ├── views/     # UI (presentación)
+│   └── utils/     # Funciones reutilizables
+```
+
+Esta estructura permite escalar, testear y reemplazar tecnologías sin afectar la lógica principal.
+
+---
+
+## 🧠 Decisiones Técnicas Clave
+
+* **Desacoplamiento de servicios (DAL)**
+  La lógica de acceso a datos se separa completamente de la UI.
+
+* **Paginación por cursor vs offset**
+  Mejora el rendimiento y evita sobrecarga en memoria.
+
+* **Normalización de datos en NoSQL**
+  Permite búsquedas eficientes en una base con limitaciones de consulta.
+
+---
+
+## 📊 Impacto en Performance
+
+| Métrica Crítica         | v1.0 (Client-Side) | v2.0 (Server Query) |
+| ----------------------- | ------------------ | ------------------- |
+| **Carga Inicial (TTV)** | > 4s               | < 0.5s              |
+| **Búsqueda**            | Bloqueos en UI     | Fluida con debounce |
+| **Uso de memoria**      | Alto               | Optimizado          |
+
+---
+
+## ⚖️ Trade-offs Operativos
+
+* **Realtime Database vs Firestore**
+  Se priorizó Realtime DB por su bajo costo y velocidad en tiempo real, sacrificando capacidades avanzadas de consulta.
+
+* **Búsqueda por prefijo**
+  Solo permite búsquedas tipo "empieza por", en lugar de búsquedas completas tipo motor (ej. Elasticsearch).
+
+---
+
+## 🔒 Seguridad
+
+* Autenticación con Firebase Authentication
+* Control de acceso por roles
+* Reglas de seguridad en base de datos para proteger lecturas y escrituras
+
+---
+
+## 🚀 Próximas Implementaciones
+
+* Enrutamiento protegido con middleware (React Router)
+* Soporte offline (Service Workers)
+
+---
+
+## 🎯 ¿Qué demuestra este proyecto?
+
+* Diseño de sistemas escalables en frontend
+* Optimización de rendimiento con grandes volúmenes de datos
+* Separación de responsabilidades (DAL, lógica, UI)
+* Toma de decisiones técnicas con trade-offs reales
+* Capacidad de refactorizar una solución funcional hacia una arquitectura robusta
+
+---
+
+## 👨‍💻 Autor
+
+**EstebanDMR** | Full Stack Developer
