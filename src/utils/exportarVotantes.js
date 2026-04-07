@@ -1,43 +1,38 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
-export const exportarAExcel = (votantes, lideres) => {
-  // Crear datos para Excel
-  const datos = votantes.map(v => {
+export const generarExcelBlob = async (votantes, lideres) => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Votantes');
+
+  worksheet.columns = [
+    { header: 'Nombre', key: 'nombre', width: 25 },
+    { header: 'Documento', key: 'documento', width: 15 },
+    { header: 'Teléfono', key: 'telefono', width: 12 },
+    { header: 'Dirección', key: 'direccion', width: 30 },
+    { header: 'Barrio', key: 'barrio', width: 15 },
+    { header: 'Municipio', key: 'municipio', width: 15 },
+    { header: 'Mesa', key: 'mesa', width: 8 },
+    { header: 'Puesto', key: 'puesto', width: 20 },
+    { header: 'Líder', key: 'lider', width: 20 },
+    { header: '¿Ya votó?', key: 'yaVoto', width: 10 }
+  ];
+
+  votantes.forEach(v => {
     const lider = lideres.find(l => l.id === v.liderAsignado);
-    return {
-      'Nombre': v.nombreCompleto,
-      'Documento': v.documento,
-      'Teléfono': v.telefono || '-',
-      'Dirección': v.direccion || '-',
-      'Barrio': v.barrio || '-',
-      'Municipio': v.municipio || '-',
-      'Mesa': v.mesa || '-',
-      'Puesto': v.puesto || '-',
-      'Líder': lider ? lider.nombre : '-',
-      '¿Ya votó?': v.yaVoto ? 'Sí' : 'No'
-    };
+    worksheet.addRow({
+      nombre: v.nombreCompleto,
+      documento: v.documento,
+      telefono: v.telefono || '-',
+      direccion: v.direccion || '-',
+      barrio: v.barrio || '-',
+      municipio: v.municipio || '-',
+      mesa: v.mesa || '-',
+      puesto: v.puesto || '-',
+      lider: lider ? lider.nombre : '-',
+      yaVoto: v.yaVoto ? 'Sí' : 'No'
+    });
   });
 
-  // Crear libro de Excel
-  const worksheet = XLSX.utils.json_to_sheet(datos);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Votantes');
-
-  // Ajustar ancho de columnas
-  const columnWidths = [
-    { wch: 25 }, // Nombre
-    { wch: 15 }, // Documento
-    { wch: 12 }, // Teléfono
-    { wch: 30 }, // Dirección
-    { wch: 15 }, // Barrio
-    { wch: 15 }, // Municipio
-    { wch: 8 },  // Mesa
-    { wch: 20 }, // Puesto
-    { wch: 20 }, // Líder
-    { wch: 10 }  // ¿Ya votó?
-  ];
-  worksheet['!cols'] = columnWidths;
-
-  // Descargar archivo
-  XLSX.writeFile(workbook, `votantes_${new Date().toISOString().split('T')[0]}.xlsx`);
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 };

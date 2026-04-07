@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { UserPlus, Download, Trash2, CheckCircle2, AlertCircle, Users, CheckSquare, Clock } from 'lucide-react';
-import { exportarAExcel } from '../utils/exportarVotantes';
+import { generarExcelBlob } from '../utils/exportarVotantes';
 import { TablaVotantes } from '../components/TablaVotantes';
 import { useTheme } from '../ThemeContext';
 
@@ -48,6 +48,20 @@ export const VotantesView = ({
     }
   };
 
+  const handleExportarExcel = async () => {
+    try {
+      const blob = await generarExcelBlob(votantes, lideres);
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `votantes_${new Date().toISOString().split('T')[0]}.xlsx`;
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setMensajeError("Error al exportar: " + error.message);
+    }
+  };
+
   const agregarVotante = async () => {
     setMensajeError(null);
     setMensajeExito(null);
@@ -85,7 +99,7 @@ export const VotantesView = ({
           <p className={`font-medium mt-1 ${d ? 'text-slate-400' : 'text-slate-500'}`}>Agrega, edita o elimina votantes.</p>
         </div>
         <div className="flex flex-wrap gap-3 w-full md:w-auto">
-          <button onClick={() => exportarAExcel(votantes, lideres)}
+          <button onClick={handleExportarExcel}
             className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 border rounded-xl transition-all shadow-sm font-bold text-sm ${d ? 'bg-[#1e293b] text-slate-300 hover:bg-slate-700 border-slate-600' : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'}`}>
             <Download className="w-4 h-4" /> Exportar listado a Excel
           </button>
