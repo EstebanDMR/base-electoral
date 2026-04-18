@@ -1,40 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Phone, UserCircle2, Loader2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, MapPin, Phone, UserCircle2 } from 'lucide-react';
 import { useTheme } from '../ThemeContext';
-import { useDebounce } from '../hooks/useDebounce';
-import { firebaseService } from '../services/firebaseService';
 
 export const BusquedaView = ({
+  votantes,
   tenantId,
   lideres,
   isAdmin,
   handleToggleYaVoto
 }) => {
   const [busquedaLocal, setBusquedaLocal] = useState('');
-  const [votantesBusqueda, setVotantesBusqueda] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const busquedaDiferida = useDebounce(busquedaLocal, 500);
   const { darkMode: d } = useTheme();
 
-  useEffect(() => {
-    const fetchBuscados = async () => {
-      if (!busquedaDiferida.trim()) {
-        setVotantesBusqueda([]);
-        setIsSearching(false);
-        return;
-      }
-      setIsSearching(true);
-      try {
-        const resultados = await firebaseService.buscarVotantes(tenantId, busquedaDiferida);
-        setVotantesBusqueda(resultados);
-      } catch (error) {
-        console.error("Error buscando votantes:", error);
-      } finally {
-        setIsSearching(false);
-      }
-    };
-    fetchBuscados();
-  }, [busquedaDiferida, tenantId]);
+  const quitarTildes = (str) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
+
+  const votantesBusqueda = useMemo(() => {
+    if (!busquedaLocal.trim()) return [];
+    
+    const busquedaLimpia = quitarTildes(busquedaLocal);
+    
+    return (votantes || []).filter(v => {
+        const textoBuscar = quitarTildes(v.nombreCompleto) + " " + (v.documento || "");
+        return textoBuscar.includes(busquedaLimpia);
+    }).slice(0, 30);
+  }, [busquedaLocal, votantes]);
 
   const isValued = busquedaLocal.trim() !== '';
 
@@ -73,7 +62,7 @@ export const BusquedaView = ({
             </div>
             <h3 className={`text-xl font-bold mb-2 ${d ? 'text-white' : 'text-slate-800'}`}>Realice su búsqueda</h3>
             <p className={`text-[14px] font-medium text-center max-w-lg ${d ? 'text-slate-400' : 'text-slate-500'}`}>
-              Utilice el buscador superior para encontrar votantes mediante consultas asíncronas paginadas.
+              Utilice el buscador superior para encontrar votantes filtrados instantáneamente.
             </p>
           </div>
         )}
@@ -81,18 +70,13 @@ export const BusquedaView = ({
 
       {isValued && (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {isSearching ? (
-             <div className={`rounded-[24px] shadow-sm border px-6 py-16 text-center flex flex-col items-center ${d ? 'bg-[#1e293b] border-slate-700 text-slate-500' : 'bg-white border-slate-100 text-slate-400'}`}>
-               <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
-               <p className="font-bold">Buscando en servidor...</p>
-             </div>
-          ) : votantesBusqueda.length === 0 ? (
+          {votantesBusqueda.length === 0 ? (
             <div className={`rounded-[24px] shadow-sm border px-6 py-16 text-center flex flex-col items-center ${d ? 'bg-[#1e293b] border-slate-700 text-slate-500' : 'bg-white border-slate-100 text-slate-400'}`}>
               <div className={`w-20 h-20 rounded-[16px] flex items-center justify-center mb-5 border ${d ? 'bg-red-900/20 border-red-900/30' : 'bg-red-50 border-red-100'}`}>
                 <UserCircle2 className="w-10 h-10 text-red-300" />
               </div>
               <p className={`text-lg font-bold mb-1 ${d ? 'text-slate-300' : 'text-slate-700'}`}>Sin coincidencias</p>
-              <p className="text-[14px] font-medium">No se encontraron registros indexados en el servidor.</p>
+              <p className="text-[14px] font-medium">No se encontraron registros indexados en el sistema local.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-5">

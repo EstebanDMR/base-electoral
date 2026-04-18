@@ -259,6 +259,7 @@ const VotantesDB = () => {
               <div className="animate-in fade-in duration-500">
                 {vistaActual === 'busqueda' && (
                   <BusquedaView
+                    votantes={votantes}
                     tenantId={tenantId}
                     lideres={lideres}
                     isAdmin={isAdmin}
