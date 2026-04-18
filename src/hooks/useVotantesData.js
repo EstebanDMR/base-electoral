@@ -18,10 +18,6 @@ export const useVotantesData = () => {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
 
-  // Pagination
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-
   // 1. Observar Auth
   useEffect(() => {
     const unsubAuth = observeAuthState((user) => {
@@ -77,12 +73,11 @@ export const useVotantesData = () => {
         setAccessDenied(false);
         try {
             const [votantesIniciales, lideresIniciales] = await Promise.all([
-                firebaseService.fetchVotantesPaginados(tenantId, 20, null),
+                firebaseService.fetchAllVotantes(tenantId),
                 firebaseService.getLideres(tenantId)
             ]);
             setVotantes(votantesIniciales);
             setLideres(lideresIniciales);
-            setHasMore(votantesIniciales.length === 20); // asumiendo pageSize 20
         } catch (error) {
             if (error.code === 'PERMISSION_DENIED' || error.message.includes('permission_denied')) {
                 setAccessDenied(true);
@@ -96,28 +91,7 @@ export const useVotantesData = () => {
     loadInitialData();
   }, [tenantId, accessToken]);
 
-  const loadMoreVotantes = useCallback(async () => {
-    if (!tenantId || !hasMore || isLoadingMore) return;
-    setIsLoadingMore(true);
-    try {
-        const lastVotante = votantes[votantes.length - 1];
-        if (!lastVotante) return;
-        
-        // Obtenemos 20 adicionales, el primero podría solaparse dependiendo de la lógica de startAt
-        // Usamos lastVotante.nombre_normalizado
-        const nuevos = await firebaseService.fetchVotantesPaginados(tenantId, 21, lastVotante.nombre_normalizado);
-        
-        // Si hay solapamiento (el registro existe), lo evitamos
-        const filtrados = nuevos.filter(n => !votantes.find(v => v.id === n.id));
-        
-        setVotantes(prev => [...prev, ...filtrados]);
-        setHasMore(nuevos.length >= 21);
-    } catch (e) {
-        console.error("Error paginando:", e);
-    } finally {
-        setIsLoadingMore(false);
-    }
-  }, [tenantId, votantes, hasMore, isLoadingMore]);
+
 
 
   const validarPermisoAdmin = () => {
@@ -130,10 +104,9 @@ export const useVotantesData = () => {
   
   const agregarVotante = async (nuevoVotante) => {
     validarPermisoAdmin();
-    // Reemplaza fetch completo con actualización local (Optimista)
-    await firebaseService.agregarVotante(tenantId, nuevoVotante);
-    // Para simplificar, re-cargamos la primera página
-    const recargados = await firebaseService.fetchVotantesPaginados(tenantId, 20);
+    // Para simplificar, re-cargamos todo tras crear
+    // Si la APP escala, aquí reemplazaríamos sólo en el estado.
+    const recargados = await firebaseService.fetchAllVotantes(tenantId);
     setVotantes(recargados);
   };
 
@@ -228,8 +201,7 @@ export const useVotantesData = () => {
   const generarVotantesDePrueba = async () => {
     validarPermisoAdmin();
     await firebaseService.generarVotantesDePrueba(tenantId, lideres);
-    // Recargar la primera página tras generar datos
-    const recargados = await firebaseService.fetchVotantesPaginados(tenantId, 20);
+    const recargados = await firebaseService.fetchAllVotantes(tenantId);
     setVotantes(recargados);
   }; 
 
@@ -243,7 +215,7 @@ export const useVotantesData = () => {
     teamAlias,
     adminAlias,
     accessDenied,
-    paginacion: { hasMore, isLoadingMore, loadMoreVotantes, setVotantes },
+    paginacion: { setVotantes }, // Retenemos setVotantes en caso de que algún componente lo use directamente
     agregarVotante,
     editarVotante,
     eliminarVotante,

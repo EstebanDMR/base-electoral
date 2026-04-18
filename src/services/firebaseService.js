@@ -5,24 +5,13 @@ import { normalizeText } from '../utils/text';
 const getBasePath = (tenantId, collection) => `usuarios/${tenantId}/${collection}`;
 
 export const firebaseService = {
-  // LECTURA PAGINADA
-  fetchVotantesPaginados: async (tenantId, pageSize = 20, lastValue = null) => {
+  // LECTURA COMPLETA
+  fetchAllVotantes: async (tenantId) => {
     if (!tenantId) return [];
     const votantesRef = ref(database, getBasePath(tenantId, 'votantes'));
-    
-    let consulta;
-    if (lastValue) {
-      consulta = query(
-        votantesRef,
-        orderByChild('nombre_normalizado'),
-        startAt(lastValue),
-        limitToFirst(pageSize)
-      );
-    } else {
-      consulta = query(votantesRef, orderByChild('nombre_normalizado'), limitToFirst(pageSize));
-    }
-
+    const consulta = query(votantesRef, orderByChild('nombre_normalizado'));
     const snap = await get(consulta);
+    
     if (!snap.exists()) return [];
     const d = snap.val();
     return Object.keys(d).map(k => ({ id: k, ...d[k] })).sort((a, b) => (a.nombre_normalizado || "").localeCompare(b.nombre_normalizado || ""));
